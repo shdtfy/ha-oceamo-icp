@@ -36,12 +36,32 @@ OceamoParseError = IcpParseError
 
 
 OCEAMO_CATEGORY_HEADINGS = {
+    # Classic German reports
     "Grundparameter": "basic",
     "Mengenelemente": "major_elements",
     "Spurenelemente": "trace_elements",
     "Schadstoffe": "pollutants",
     "Nährstoffe": "nutrients",
     "Osmose-Check": "osmosis",
+    # Current ICP-MS reports are also distributed in English.
+    "Main Parameters": "basic",
+    "Basic Parameters": "basic",
+    "Main Elements": "major_elements",
+    "Major Elements": "major_elements",
+    "Trace Elements": "trace_elements",
+    "Pollutants": "pollutants",
+    "Nutrients": "nutrients",
+    "Osmosis-Check": "osmosis",
+    "Osmosis Check": "osmosis",
+    "Osmosis Water": "osmosis",
+    "RO Water": "osmosis",
+    "RO/DI Water": "osmosis",
+    "RO/DI Check": "osmosis",
+}
+
+_OCEAMO_CATEGORY_LOOKUP = {
+    heading.casefold(): category
+    for heading, category in OCEAMO_CATEGORY_HEADINGS.items()
 }
 
 # MD5 hashes of the decoded 15x15 status artwork embedded in the tested
@@ -69,7 +89,7 @@ _OCEAMO_STATUS_IMAGE_HASHES: dict[str, dict[str, str | None]] = {
     },
 }
 
-_UNIT_PATTERN = r"(?:psu|dKH|mg/l|µg/l|μg/l|ng/l|mmol/l|µmol/l|μmol/l)"
+_UNIT_PATTERN = r"(?:psu|dKH|mg/[lL]|µg/[lL]|μg/[lL]|ng/[lL]|mmol/[lL]|µmol/[lL]|μmol/[lL]|m-1|m\^-1|m⁻¹|1/m)"
 
 _OCEAMO_ROW_RE = re.compile(
     rf"^(?P<name>.+?)\s+"
@@ -81,8 +101,113 @@ _OCEAMO_ROW_RE = re.compile(
     rf">\s*-?\d+(?:[.,]\d+)?|"
     rf"-?\d+(?:[.,]\d+)?(?:\s*-\s*-?\d+(?:[.,]\d+)?)?"
     rf")"
-    rf"(?:\s+(?P<target_unit>{_UNIT_PATTERN}))?\s*$"
+    rf"(?:\s+(?P<target_unit>{_UNIT_PATTERN}))?\s*$",
+    re.IGNORECASE,
 )
+
+# Canonical Oceamo names make the English ICP-MS layout share entity and
+# statistic IDs with the older German classic reports wherever the analyte is
+# genuinely the same measurement. Unknown future analytes still fall back to a
+# stable slug, so adding a new laboratory parameter does not break the parser.
+# Mapping: normalized source-name slug -> (canonical key, display name)
+_OCEAMO_CANONICAL_NAMES: dict[str, tuple[str, str]] = {
+    "salinitaet": ("salinitaet", "Salinität"),
+    "salinity": ("salinitaet", "Salinität"),
+    "alkalinitaet": ("alkalinitaet", "Alkalinität"),
+    "alkalinitaet_kh": ("alkalinitaet", "Alkalinität"),
+    "alkalinity": ("alkalinitaet", "Alkalinität"),
+    "alkalinity_kh": ("alkalinitaet", "Alkalinität"),
+    "sak254": ("sak254", "SAK254"),
+    "sac254": ("sak254", "SAK254"),
+    "calcium": ("calcium", "Calcium"),
+    "bor": ("bor", "Bor"),
+    "boron": ("bor", "Bor"),
+    "bromid": ("bromid", "Bromid"),
+    "bromide": ("bromid", "Bromid"),
+    "chlorid": ("chlorid", "Chlorid"),
+    "chloride": ("chlorid", "Chlorid"),
+    "kalium": ("kalium", "Kalium"),
+    "potassium": ("kalium", "Kalium"),
+    "magnesium": ("magnesium", "Magnesium"),
+    "natrium": ("natrium", "Natrium"),
+    "sodium": ("natrium", "Natrium"),
+    "strontium": ("strontium", "Strontium"),
+    "sulfat": ("sulfat", "Sulfat"),
+    "sulfate": ("sulfat", "Sulfat"),
+    "sulphate": ("sulfat", "Sulfat"),
+    "barium": ("barium", "Barium"),
+    "chrom": ("chrom", "Chrom"),
+    "chromium": ("chrom", "Chrom"),
+    "cobalt": ("cobalt", "Cobalt"),
+    "caesium": ("caesium", "Cäsium"),
+    "cesium": ("caesium", "Cäsium"),
+    "eisen": ("eisen", "Eisen"),
+    "iron": ("eisen", "Eisen"),
+    "fluorid": ("fluorid", "Fluorid"),
+    "fluoride": ("fluorid", "Fluorid"),
+    "iod": ("iod", "Iod"),
+    "iodine": ("iod", "Iod"),
+    "iodid": ("iod", "Iod"),
+    "iodide": ("iod", "Iod"),
+    "kupfer": ("kupfer", "Kupfer"),
+    "copper": ("kupfer", "Kupfer"),
+    "lithium": ("lithium", "Lithium"),
+    "mangan": ("mangan", "Mangan"),
+    "manganese": ("mangan", "Mangan"),
+    "molybdaen": ("molybdaen", "Molybdän"),
+    "molybdenum": ("molybdaen", "Molybdän"),
+    "nickel": ("nickel", "Nickel"),
+    "rubidium": ("rubidium", "Rubidium"),
+    "selen": ("selen", "Selen"),
+    "selenium": ("selen", "Selen"),
+    "vanadium": ("vanadium", "Vanadium"),
+    "zink": ("zink", "Zink"),
+    "zinc": ("zink", "Zink"),
+    "zinn": ("zinn", "Zinn"),
+    "tin": ("zinn", "Zinn"),
+    "aluminium": ("aluminium", "Aluminium"),
+    "aluminum": ("aluminium", "Aluminium"),
+    "antimon": ("antimon", "Antimon"),
+    "antimony": ("antimon", "Antimon"),
+    "arsen": ("arsen", "Arsen"),
+    "arsenic": ("arsen", "Arsen"),
+    "beryllium": ("beryllium", "Beryllium"),
+    "bismuth": ("bismuth", "Bismuth"),
+    "blei": ("blei", "Blei"),
+    "lead": ("blei", "Blei"),
+    "cadmium": ("cadmium", "Cadmium"),
+    "cer": ("cer", "Cer"),
+    "cerium": ("cer", "Cer"),
+    "gallium": ("gallium", "Gallium"),
+    "lanthan": ("lanthan", "Lanthan"),
+    "lanthanum": ("lanthan", "Lanthan"),
+    "quecksilber": ("quecksilber", "Quecksilber"),
+    "mercury": ("quecksilber", "Quecksilber"),
+    "neodym": ("neodym", "Neodym"),
+    "neodymium": ("neodym", "Neodym"),
+    "thallium": ("thallium", "Thallium"),
+    "tellur": ("tellur", "Tellur"),
+    "tellurium": ("tellur", "Tellur"),
+    "titan": ("titan", "Titan"),
+    "titanium": ("titan", "Titan"),
+    "ruthenium": ("ruthenium", "Ruthenium"),
+    "thorium": ("thorium", "Thorium"),
+    "wolfram": ("wolfram", "Wolfram"),
+    "tungsten": ("wolfram", "Wolfram"),
+    "uran": ("uran", "Uran"),
+    "uranium": ("uran", "Uran"),
+    "hafnium": ("hafnium", "Hafnium"),
+    "nitrat": ("nitrat", "Nitrat"),
+    "nitrate": ("nitrat", "Nitrat"),
+    "nitrit": ("nitrit", "Nitrit"),
+    "nitrite": ("nitrit", "Nitrit"),
+    "phosphat_photometrisch": ("phosphat_photometrisch", "Phosphat (photometrisch)"),
+    "phosphate_photometric": ("phosphat_photometrisch", "Phosphat (photometrisch)"),
+    "gesamtphosphor_icp": ("gesamtphosphor_icp", "Gesamtphosphor (ICP)"),
+    "total_phosphorus_icp": ("gesamtphosphor_icp", "Gesamtphosphor (ICP)"),
+    "silicium": ("silicium", "Silicium"),
+    "silicon": ("silicium", "Silicium"),
+}
 
 _FAUNA_ROW_RE = re.compile(
     r"^\s*"
@@ -402,6 +527,12 @@ def _status_from_reference(
             return {"severity": "warning", "direction": "high"}
         return {"severity": "ok", "direction": None}
 
+    if target_type == "not_detectable":
+        # A numeric result against a laboratory "not detectable" target is a
+        # real detection. Mark it as attention-worthy without inventing a
+        # critical threshold.
+        return {"severity": "warning", "direction": "high"}
+
     if target_type == "upper_limit":
         maximum = target.get("max")
         if isinstance(maximum, (int, float)) and value > maximum:
@@ -425,23 +556,36 @@ def _status_from_reference(
 def _parse_oceamo_measurement_line(
     line: str, category: str
 ) -> dict[str, Any] | None:
-    """Parse one Oceamo table row."""
+    """Parse one classic or ICP-MS Oceamo table row."""
     normalized = " ".join(line.split())
     match = _OCEAMO_ROW_RE.match(normalized)
     if not match:
         return None
 
+    source_name = match.group("name").strip()
+    canonical = _OCEAMO_CANONICAL_NAMES.get(_slug(source_name))
+    if canonical is None:
+        key = _slug(source_name)
+        display_name = source_name
+    else:
+        key, display_name = canonical
+
     raw_value = match.group("value")
     unit = match.group("unit") or match.group("target_unit")
     if unit is not None:
-        unit = unit.replace("μ", "µ")
+        unit = unit.replace("μ", "µ").replace("/L", "/l")
+        if unit in {"m^-1", "m⁻¹", "1/m"}:
+            unit = "m-1"
 
     measurement: dict[str, Any] = {
-        "key": _slug(match.group("name")),
-        "name": match.group("name"),
+        "key": key,
+        "name": display_name,
+        "source_name": source_name,
         "category": category,
         "raw_value": raw_value,
+        "source_raw_value": raw_value,
         "unit": unit,
+        "source_unit": unit,
         "target": _parse_target(match.group("target")),
         "provider": PROVIDER_OCEAMO,
         "provider_name": PROVIDER_NAMES[PROVIDER_OCEAMO],
@@ -526,36 +670,74 @@ def _extract_oceamo_status_sequence(
     return result
 
 
-def _extract_oceamo_metadata(text: str) -> dict[str, Any]:
-    """Extract Oceamo report metadata while omitting customer details."""
+def _oceamo_report_type(text: str) -> str:
+    """Distinguish Oceamo classic ICP from the ICP-MS report family."""
+    normalized = " ".join(text.split()).casefold()
+    head = normalized[:1800]
+    if re.search(r"\bmsr\d{4,}\b", normalized):
+        return "reef_icp_ms"
+    if "icp-ms" in head or "icp ms" in head:
+        return "reef_icp_ms"
+    return "classic_icp"
+
+
+def _extract_oceamo_metadata(text: str, report_type: str) -> dict[str, Any]:
+    """Extract German or English Oceamo metadata while omitting customer details."""
     metadata: dict[str, Any] = {
         "provider": PROVIDER_OCEAMO,
         "provider_name": PROVIDER_NAMES[PROVIDER_OCEAMO],
-        "report_type": "classic_icp",
+        "report_type": report_type,
     }
 
-    if match := re.search(r"Analysedatum:\s*(\d{2}\.\d{2}\.\d{4})", text):
-        metadata["analysis_date"] = _parse_date(match.group(1))
-    if match := re.search(r"Analysenummer:\s*([A-Za-z]{2}\d+)", text):
-        metadata["analysis_number"] = match.group(1)
-        metadata["provider_report_id"] = match.group(1)
-    if match := re.search(
+    date_patterns = (
+        r"Analysedatum:\s*(\d{2}\.\d{2}\.\d{4})",
+        r"Date of Analysis\s*:?\s*(\d{2}\.\d{2}\.\d{4})",
+    )
+    for pattern in date_patterns:
+        if match := re.search(pattern, text, flags=re.IGNORECASE):
+            metadata["analysis_date"] = _parse_date(match.group(1))
+            break
+
+    number_patterns = (
+        r"Analysenummer:\s*([A-Za-z]{2,4}\d+)",
+        r"Analysis No\.?\s*:?\s*([A-Za-z]{2,4}\d+)",
+        r"Analysis Number\s*:?\s*([A-Za-z]{2,4}\d+)",
+    )
+    for pattern in number_patterns:
+        if match := re.search(pattern, text, flags=re.IGNORECASE):
+            report_id = match.group(1).upper()
+            metadata["analysis_number"] = report_id
+            metadata["provider_report_id"] = report_id
+            break
+
+    sample_patterns = (
         r"Probennahme:\s*(\d{2}\.\d{2}\.\d{4}\s*-\s*\d{2}:\d{2})",
-        text,
-    ):
-        metadata["sample_taken"] = _parse_sample_datetime(match.group(1))
-    if match := re.search(r"Beckentyp:\s*(.+?)(?:\n|$)", text):
-        metadata["tank_type"] = match.group(1).strip()
+        r"Date of Sampling\s*:?\s*(\d{2}\.\d{2}\.\d{4}\s*-\s*\d{2}:\d{2})",
+    )
+    for pattern in sample_patterns:
+        if match := re.search(pattern, text, flags=re.IGNORECASE):
+            metadata["sample_taken"] = _parse_sample_datetime(match.group(1))
+            break
+
+    tank_patterns = (
+        r"Beckentyp:\s*(.+?)(?:\n|$)",
+        r"Tank\s*:\s*(.+?)(?:\n|$)",
+    )
+    for pattern in tank_patterns:
+        if match := re.search(pattern, text, flags=re.IGNORECASE):
+            metadata["tank_type"] = " ".join(match.group(1).split())
+            break
 
     return metadata
 
 
 def _extract_oceamo_interpretation(text: str) -> str | None:
-    """Extract Oceamo's interpretation section."""
+    """Extract Oceamo's German or English interpretation section."""
     match = re.search(
-        r"Interpretation\s+(.*?)\s+Produktempfehlungen",
+        r"(?:Interpretation|Evaluation)\s+(.*?)\s+"
+        r"(?:Produktempfehlungen|Product Recommendations|Product recommendation)",
         text,
-        flags=re.DOTALL,
+        flags=re.IGNORECASE | re.DOTALL,
     )
     if not match:
         return None
@@ -563,11 +745,12 @@ def _extract_oceamo_interpretation(text: str) -> str | None:
 
 
 def _extract_oceamo_product_recommendations(text: str) -> str | None:
-    """Extract the Oceamo product recommendation block as source text."""
+    """Extract Oceamo's German or English product recommendation block."""
     match = re.search(
-        r"Produktempfehlungen\s+(.*?)(?:Advanced Reef Chemistry|$)",
+        r"(?:Produktempfehlungen|Product Recommendations|Product recommendation)\s+"
+        r"(.*?)(?:Advanced Reef Chemistry|ICP\s*-?\s*MS\s+by\s+oceamo|$)",
         text,
-        flags=re.DOTALL,
+        flags=re.IGNORECASE | re.DOTALL,
     )
     if not match:
         return None
@@ -576,19 +759,35 @@ def _extract_oceamo_product_recommendations(text: str) -> str | None:
 
 
 def parse_oceamo_pdf(path: str | Path) -> dict[str, Any]:
-    """Parse a classic Oceamo PDF report into normalized data."""
+    """Parse classic Oceamo and Oceamo Reef ICP-MS PDF reports."""
     try:
         reader = PdfReader(str(path))
     except Exception as err:  # noqa: BLE001
         raise IcpParseError("The uploaded file is not a readable PDF.") from err
 
+    if not reader.pages:
+        raise IcpParseError("The PDF contains no pages.")
+
     page_texts = [(page.extract_text() or "") for page in reader.pages]
     full_text = "\n".join(page_texts)
+    normalized = " ".join(full_text.split()).casefold()
 
-    if "Oceamo" not in full_text or "Analysebericht" not in full_text:
-        raise IcpParseError("The PDF does not look like an Oceamo analysis report.")
+    has_oceamo_brand = "oceamo" in normalized
+    has_report_heading = (
+        "analysebericht" in normalized
+        or "analysis report" in normalized
+    )
+    has_report_id = (
+        "analysenummer" in normalized
+        or "analysis no" in normalized
+        or "analysis number" in normalized
+        or re.search(r"\b(?:oc|msr)\d{4,}\b", normalized) is not None
+    )
+    if not (has_oceamo_brand and has_report_heading and has_report_id):
+        raise IcpParseError("The PDF does not look like a supported Oceamo analysis report.")
 
-    metadata = _extract_oceamo_metadata(full_text)
+    report_type = _oceamo_report_type(full_text)
+    metadata = _extract_oceamo_metadata(full_text, report_type)
     measurements: list[dict[str, Any]] = []
     current_category: str | None = None
 
@@ -600,11 +799,17 @@ def parse_oceamo_pdf(path: str | Path) -> dict[str, Any]:
             if not line:
                 continue
 
-            if line == "Interpretation":
+            if line.casefold() in {
+                "interpretation",
+                "evaluation",
+                "produktempfehlungen",
+                "product recommendations",
+            }:
                 break
 
-            if line in OCEAMO_CATEGORY_HEADINGS:
-                current_category = OCEAMO_CATEGORY_HEADINGS[line]
+            category = _OCEAMO_CATEGORY_LOOKUP.get(line.casefold())
+            if category is not None:
+                current_category = category
                 continue
 
             if current_category is None:
@@ -613,23 +818,41 @@ def parse_oceamo_pdf(path: str | Path) -> dict[str, Any]:
             if measurement := _parse_oceamo_measurement_line(line, current_category):
                 page_measurements.append(measurement)
 
-        # The classic report draws one status icon per table row. Legend icons
-        # are drawn after the data rows, so only consume as many as we parsed.
+        # Oceamo draws one rating icon per table row in the tested layouts.
+        # Known artwork is authoritative. If newer ICP-MS artwork changes, a
+        # conservative range/limit fallback is used instead of inventing a
+        # critical threshold for exact ideal values.
         page_statuses = _extract_oceamo_status_sequence(page, reader)
         for index, measurement in enumerate(page_measurements):
             if index < len(page_statuses):
                 measurement["status"] = page_statuses[index]
             else:
-                measurement["status"] = {
-                    "severity": "unknown",
-                    "direction": None,
-                }
+                measurement["status"] = _status_from_reference(
+                    measurement.get("value"),
+                    str(measurement.get("raw_value", "")),
+                    measurement.get("target", {}),
+                )
 
         measurements.extend(page_measurements)
 
+    # Some PDF generators can repeat a table header/page fragment. Keep the
+    # first occurrence of each category/key pair while retaining RO/DI values
+    # separately through their distinct category.
+    deduplicated: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for measurement in measurements:
+        identity = (
+            str(measurement.get("category", "unknown")),
+            str(measurement.get("key", "unknown")),
+        )
+        if identity in seen:
+            continue
+        seen.add(identity)
+        deduplicated.append(measurement)
+    measurements = deduplicated
+
     if not measurements:
         raise IcpParseError("No ICP measurements were found in the report.")
-
     if "analysis_number" not in metadata:
         raise IcpParseError("The analysis number could not be found.")
     if "analysis_date" not in metadata:
@@ -639,7 +862,7 @@ def parse_oceamo_pdf(path: str | Path) -> dict[str, Any]:
         "schema_version": 2,
         "provider": PROVIDER_OCEAMO,
         "provider_name": PROVIDER_NAMES[PROVIDER_OCEAMO],
-        "report_type": "classic_icp",
+        "report_type": report_type,
         "metadata": metadata,
         "measurements": measurements,
         "interpretation": _extract_oceamo_interpretation(full_text),
@@ -1312,10 +1535,16 @@ def detect_icp_provider(path: str | Path) -> str:
     full_text = "\n".join((page.extract_text() or "") for page in reader.pages)
     normalized = " ".join(full_text.split()).casefold()
 
-    oceamo_markers = (
-        "oceamo",
-        "analysebericht",
-        "analysenummer:",
+    oceamo_brand = "oceamo" in normalized
+    oceamo_report_marker = (
+        "analysebericht" in normalized
+        or "analysis report" in normalized
+    )
+    oceamo_id_marker = (
+        "analysenummer" in normalized
+        or "analysis no" in normalized
+        or "analysis number" in normalized
+        or re.search(r"\b(?:oc|msr)\d{4,}\b", normalized) is not None
     )
     fauna_marin_markers = (
         "proben-id:",
@@ -1334,7 +1563,7 @@ def detect_icp_provider(path: str | Path) -> str:
     )
 
     matches: list[str] = []
-    if all(marker in normalized for marker in oceamo_markers):
+    if oceamo_brand and oceamo_report_marker and oceamo_id_marker:
         matches.append(PROVIDER_OCEAMO)
     if all(marker in normalized for marker in fauna_marin_markers):
         matches.append(PROVIDER_FAUNA_MARIN)
