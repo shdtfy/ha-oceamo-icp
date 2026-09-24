@@ -18,7 +18,8 @@ A custom Home Assistant integration for importing Oceamo ICP analysis reports di
 - Keep the newest report as the current sensor state
 - Import historic numeric ICP values as Home Assistant external long-term statistics using the original sample timestamp
 - Compare the newest ICP with the immediately previous stored ICP
-- Expose one `ICP Status` entity containing the complete latest report, status summary and comparison data for the planned custom dashboard card
+- Bundle and automatically load a dedicated **Oceamo ICP Card** for Home Assistant dashboards
+- Expose one `ICP Status` entity containing the complete latest report, status summary and comparison data for the custom card
 
 The parser currently targets the classic Oceamo report format used by analysis **OC188727** from 2022. Support for newer Oceamo and ICP-MS report formats will be added separately.
 
@@ -75,7 +76,52 @@ trend: up
 
 If either the current or previous value is non-numeric (`n.n.` / `n.b.`), `delta` and `trend` remain empty instead of inventing a numeric value.
 
-The `ICP Status` entity contains the same enriched measurement data so a custom Lovelace card can consume the complete analysis from a single entity.
+The `ICP Status` entity contains the same enriched measurement data so the dashboard card can consume the complete analysis from a single entity.
+
+## Oceamo ICP dashboard card
+
+Version 0.3.0 adds the first bundled Lovelace card.
+
+The card is served directly by the integration and automatically loaded by the Home Assistant frontend. No separate HACS frontend repository and no manual Lovelace resource entry are required.
+
+After installing/updating the integration and restarting Home Assistant:
+
+1. Open a dashboard.
+2. Enter edit mode.
+3. Add a card.
+4. Search for **Oceamo ICP Card**.
+5. Select the `ICP Status` sensor of the aquarium.
+
+The card currently shows:
+
+- aquarium name
+- latest analysis number and date
+- overall status
+- green / yellow / red status counts
+- previous analysis number and date
+- collapsible Oceamo categories
+- current measurement
+- target value / target range
+- previous measurement
+- change and trend direction
+- translated handling of `n.n.` and `n.b.`
+
+Manual YAML configuration is also possible:
+
+```yaml
+type: custom:oceamo-icp-card
+entity: sensor.my_aquarium_icp_status
+show_previous: true
+```
+
+Optional custom title:
+
+```yaml
+type: custom:oceamo-icp-card
+entity: sensor.my_aquarium_icp_status
+title: Mein Riff
+show_previous: true
+```
 
 ## Roadmap
 
@@ -87,7 +133,8 @@ The `ICP Status` entity contains the same enriched measurement data so a custom 
 - [x] Long-term statistics using the original sample timestamp
 - [x] Analysis number as a dedicated entity
 - [x] Comparison with the previous stored ICP
-- [ ] Dedicated Oceamo ICP dashboard card
+- [x] First bundled Oceamo ICP dashboard card
+- [ ] Card polish, richer history views and more display options
 - [ ] Newer Oceamo / ICP-MS report formats
 - [ ] Automated tests and release workflow
 - [ ] First tagged HACS release

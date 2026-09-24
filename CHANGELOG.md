@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.0 - Development
+
+### Added
+
+- Added the first bundled `Oceamo ICP Card` for Home Assistant dashboards.
+- The integration now serves and automatically loads the card through the Home Assistant frontend.
+- No separate HACS frontend repository or manual Lovelace resource entry is required.
+- Added a visual editor for choosing the `ICP Status` entity, an optional title and previous-analysis display.
+- Card shows analysis metadata, overall status, status counts, collapsible categories, targets, previous values, deltas and trend direction.
+- Added German and English card labels.
+- Added mobile-responsive card styling.
+
+### Changed
+
+- Added `frontend` as an integration dependency.
+- Updated the README with card installation and usage instructions.
+
 ## 0.2.5 - Development
 
 ### Added
