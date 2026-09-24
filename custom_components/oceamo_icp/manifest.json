@@ -1,1 +1,18 @@
-
+{
+  "domain": "oceamo_icp",
+  "name": "Oceamo ICP",
+  "codeowners": [
+    "@shdtfy"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "file_upload"
+  ],
+  "documentation": "https://github.com/shdtfy/ha-oceamo-icp",
+  "integration_type": "service",
+  "issue_tracker": "https://github.com/shdtfy/ha-oceamo-icp/issues",
+  "requirements": [
+    "pypdf==6.19.0"
+  ],
+  "version": "0.1.0"
+}

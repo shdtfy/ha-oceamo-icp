@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Oceamo ICP",
+        "description": "Create an aquarium and import its first Oceamo ICP PDF report.",
+        "data": {
+          "aquarium_name": "Aquarium name",
+          "pdf_file": "Oceamo PDF report"
+        }
+      }
+    },
+    "error": {
+      "invalid_oceamo_pdf": "The PDF could not be recognized as a supported Oceamo analysis report.",
+      "unknown": "An unexpected error occurred while reading the PDF."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Import another Oceamo analysis",
+        "description": "Upload another Oceamo PDF. Existing analyses with the same analysis number are replaced.",
+        "data": {
+          "pdf_file": "Oceamo PDF report"
+        }
+      }
+    },
+    "error": {
+      "invalid_oceamo_pdf": "The PDF could not be recognized as a supported Oceamo analysis report.",
+      "unknown": "An unexpected error occurred while reading the PDF."
+    }
+  }
+}
