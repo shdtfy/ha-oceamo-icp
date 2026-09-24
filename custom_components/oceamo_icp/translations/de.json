@@ -11,7 +11,7 @@
       },
       "analysis_date": {
         "title": "Analysedatum auswählen",
-        "description": "Reef ICP hat {provider} erkannt, konnte aber kein zuverlässiges Analysedatum im Bericht, Dateinamen oder in den PDF-Metadaten finden. Bitte wähle das Datum dieser Analyse aus.",
+        "description": "Reef ICP hat {provider} erkannt, konnte aber kein zuverlässiges Analysedatum im Bericht oder Dateinamen finden. Bitte wähle das Datum dieser Analyse aus.",
         "data": {
           "analysis_date": "Analysedatum"
         }
@@ -35,7 +35,7 @@
       },
       "analysis_date": {
         "title": "Analysedatum auswählen",
-        "description": "Reef ICP hat {provider} erkannt, konnte aber kein zuverlässiges Analysedatum im Bericht, Dateinamen oder in den PDF-Metadaten finden. Bitte wähle das Datum dieser Analyse aus.",
+        "description": "Reef ICP hat {provider} erkannt, konnte aber kein zuverlässiges Analysedatum im Bericht oder Dateinamen finden. Bitte wähle das Datum dieser Analyse aus.",
         "data": {
           "analysis_date": "Analysedatum"
         }
