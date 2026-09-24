@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.6.0 - Development
+
+### Added
+
+- Added automatic detection and parsing for the current ATI laboratory PDF format.
+- Added ATI metadata including analysis ID, barcode, aquarium name, net volume, analysis reason and laboratory dates.
+- Added ATI basis values, major elements, trace elements, nutrients and pollutants to the shared provider-neutral measurement model.
+- Added ATI ideal values and normalization of textual assessments such as `TOP`, `WENIG`, `ERHÖHT`, `ZU HOCH`, `Achtung` and `Kritisch`.
+- Added handling for ATI `---` non-detect values without converting them to numeric zero.
+- Added safe ATI concentration-unit conversion before cross-provider statistics are merged.
+- Added extraction of ATI recommended-action text and ICP Elements / supplement dosing text for future dashboard display.
+- Added report-type metadata so future formats such as Oceamo Reef ICP-MS and ATI Ultimate-MS can be distinguished from the laboratory provider itself.
+
+### Changed
+
+- Updated the bundled card and integration version to `0.6.0`.
+- Stored-report and status attributes now expose a report-type hint when available.
+- Existing Oceamo and Fauna Marin imports remain backward compatible and continue using the same entity and statistic IDs.
+
+### Tested
+
+- Regression-tested the parser against the existing Oceamo test report and all four available Fauna Marin reports.
+- Developed and validated the ATI parser against the structure and values of a real public 2026 ATI report (analysis ID `372482`).
+
 ## 0.5.0 - Development
 
 ### Added

@@ -28,6 +28,26 @@ A custom Home Assistant integration for importing reef-aquarium ICP analysis rep
 
 The Fauna Marin parser has been tested against four real reports from 2022.
 
+### ATI
+
+- Current ATI laboratory PDF layout
+- Automatic recognition using ATI-specific PDF fingerprints
+- Analysis ID, barcode, aquarium name, volume, reason and laboratory dates
+- Basis values, major elements, trace elements, nutrients and pollutants
+- ATI ideal values and textual laboratory assessments
+- ATI `---` non-detect values are preserved as non-numeric results
+- ATI `TOP`, `WENIG`, `ERHÖHT`, `ZU HOCH`, `Achtung` and `Kritisch` assessments are normalized to Reef ICP status levels
+- Comparable concentrations are normalized to the shared cross-provider units
+- Recommended-action and dosing text is preserved for later card display
+
+The ATI parser has been developed against a real public current-format ATI report from 2026 (analysis ID **372482**). Older ATI layouts and the newer Pro / Ultimate-MS variants remain separate compatibility targets until representative PDFs are available.
+
+## Provider and report type
+
+Reef ICP stores the laboratory provider separately from a report-type hint. This prepares the integration for different analysis products from the same laboratory, for example classic Oceamo ICP versus **Oceamo Reef ICP-MS**, without treating them as different providers.
+
+Current report-type hints include `classic_icp`, `reef_icp` and `ati_icp`. Future parsers can add dedicated types such as Oceamo ICP-MS or ATI Ultimate-MS while keeping the same provider-neutral history model.
+
 ## Multi-provider history
 
 Reports from different providers can be stored in the same aquarium.
@@ -59,6 +79,7 @@ Currently detected automatically:
 
 - Oceamo
 - Fauna Marin
+- ATI
 
 If no supported provider can be identified, the import stops instead of guessing. A report is replaced only when both its provider and provider report ID match an already stored report.
 
@@ -119,6 +140,8 @@ These are imported as laboratory-provided recommendations. Reef ICP does not cur
 
 Oceamo status levels come directly from the status artwork embedded in the tested classic PDF.
 
+ATI's current PDF contains textual assessments. Reef ICP maps ATI labels such as `TOP`, `WENIG`, `ERHÖHT`, `ZU HOCH`, `Achtung` and `Kritisch` into the same `ok` / `warning` / `critical` model while preserving the laboratory result itself.
+
 The tested Fauna Marin format does not contain equivalent Oceamo-style severity icons. Reef ICP therefore derives a conservative display status from Fauna Marin's published reference range:
 
 - inside reference range → `ok`
@@ -135,7 +158,7 @@ The original sample timestamp is used when available. Date-only samples are plac
 
 Provider parsers normalize comparable measurements before statistics are imported. A safety check prevents points with mismatching units from being merged into the same statistic.
 
-`n.n.`, `n.b.` and `n.g.` are never converted to numeric zero.
+`n.n.`, `n.b.`, `n.g.` and ATI `---` non-detect results are never converted to numeric zero.
 
 ## Reef ICP dashboard card
 
@@ -199,6 +222,7 @@ https://github.com/shdtfy/ha-oceamo-icp
 - [x] Classic Oceamo PDF parser
 - [x] Oceamo status artwork extraction
 - [x] Fauna Marin Reef ICP PDF parser
+- [x] Current ATI laboratory PDF parser
 - [x] Automatic provider detection during import
 - [x] Cross-provider normalized history
 - [x] Long-term statistics
@@ -207,8 +231,9 @@ https://github.com/shdtfy/ha-oceamo-icp
 - [x] Interactive measurement history
 - [ ] Show Oceamo interpretation / evaluation text inside the card
 - [ ] Show laboratory dosing recommendations inside the card
-- [ ] More providers such as ATI
-- [ ] Newer Oceamo / ICP-MS report formats
+- [ ] Older ATI layouts and ATI Pro / Ultimate-MS variants
+- [ ] Oceamo Reef ICP-MS and newer Oceamo report formats
+- [ ] Additional ICP laboratories
 - [ ] Parser regression tests in the repository
 - [ ] First tagged HACS release
 - [ ] Optional dosing assistant with explicit safeguards and user approval
