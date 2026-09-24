@@ -73,6 +73,33 @@ _OCEAMO_CATEGORY_LOOKUP = {
 # MD5 hashes of the decoded 15x15 status artwork embedded in the tested
 # classic Oceamo PDF format. Unknown artwork is deliberately not guessed.
 _OCEAMO_STATUS_IMAGE_HASHES: dict[str, dict[str, str | None]] = {
+    # Additional classic Oceamo icon artwork found in report OC186791.
+    # The symbols are visually identical to the already supported classic
+    # artwork but are encoded with different image data in this PDF.
+    "cfb66b1710334a248808b253e6b14042": {
+        "severity": "ok",
+        "direction": None,
+    },
+    "e802549f897c6078c97136fbb0a4e89b": {
+        "severity": "warning",
+        "direction": "high",
+    },
+    "bbdd419dc49cf34b80e3870a744d0664": {
+        "severity": "warning",
+        "direction": "low",
+    },
+    "75e34c979b0e3c9b6e0998368f97b763": {
+        "severity": "warning",
+        "direction": "low",
+    },
+    "9acf4dc1999b18fb93117d505ba6bf77": {
+        "severity": "critical",
+        "direction": "high",
+    },
+    "4c41d03b9aa6117374e57ddbaef76f67": {
+        "severity": "critical",
+        "direction": "low",
+    },
     "3346ccd496a836a16d810b48ef46ffb9": {
         "severity": "ok",
         "direction": None,
