@@ -3,9 +3,11 @@
     "step": {
       "user": {
         "title": "Reef ICP",
-        "description": "Lege ein Aquarium an und lade den ersten ICP-PDF-Bericht hoch. Reef ICP erkennt den unterstützten Laboranbieter automatisch.",
+        "description": "Lege ein Aquarium mit Netto-Wasservolumen und Versorgungssystem an und lade anschließend den ersten ICP-PDF-Bericht hoch. Reef ICP erkennt das Labor automatisch.",
         "data": {
           "aquarium_name": "Name des Aquariums",
+          "aquarium_volume_l": "Netto-Wasservolumen",
+          "supply_system": "Versorgungssystem",
           "pdf_file": "ICP-PDF-Bericht"
         }
       },
@@ -21,16 +23,17 @@
       "unsupported_provider": "Der ICP-Anbieter konnte nicht automatisch erkannt werden oder wird noch nicht unterstützt.",
       "invalid_icp_pdf": "Der Anbieter wurde erkannt, der PDF-Bericht konnte aber nicht als unterstützte ICP-Analyse verarbeitet werden.",
       "invalid_analysis_date": "Bitte wähle ein gültiges Analysedatum aus.",
-      "unknown": "Beim Lesen der PDF ist ein unerwarteter Fehler aufgetreten."
+      "unknown": "Beim Lesen der PDF ist ein unerwarteter Fehler aufgetreten.",
+      "invalid_aquarium_profile": "Bitte gib einen gültigen Aquariumnamen, ein Netto-Wasservolumen über 0 L und ein Versorgungssystem an."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Weitere ICP-Analyse importieren",
-        "description": "Lade einfach eine weitere ICP-PDF hoch. Reef ICP erkennt den Anbieter automatisch. Ein vorhandener Bericht mit demselben Anbieter und derselben Berichts-ID wird ersetzt.",
-        "data": {
-          "pdf_file": "ICP-PDF-Bericht"
+        "title": "Reef ICP",
+        "menu_options": {
+          "import_icp": "Weitere ICP-Analyse importieren",
+          "aquarium_settings": "Aquarium-Einstellungen"
         }
       },
       "analysis_date": {
@@ -39,13 +42,29 @@
         "data": {
           "analysis_date": "Analysedatum"
         }
+      },
+      "import_icp": {
+        "title": "Weitere ICP-Analyse importieren",
+        "description": "Lade eine weitere ICP-PDF hoch. Reef ICP erkennt den Anbieter automatisch. Ein vorhandener Bericht mit demselben Anbieter und derselben Berichts-ID wird ersetzt.",
+        "data": {
+          "pdf_file": "ICP-PDF-Bericht"
+        }
+      },
+      "aquarium_settings": {
+        "title": "Aquarium-Einstellungen",
+        "description": "Lege das Netto-Wasservolumen und das dauerhaft verwendete Versorgungssystem fest. Diese Angaben gelten unabhängig davon, bei welchem Labor die ICP durchgeführt wird. Du kannst eine Vorgabe auswählen oder ein eigenes System eingeben.",
+        "data": {
+          "aquarium_volume_l": "Netto-Wasservolumen",
+          "supply_system": "Versorgungssystem"
+        }
       }
     },
     "error": {
       "unsupported_provider": "Der ICP-Anbieter konnte nicht automatisch erkannt werden oder wird noch nicht unterstützt.",
       "invalid_icp_pdf": "Der Anbieter wurde erkannt, der PDF-Bericht konnte aber nicht als unterstützte ICP-Analyse verarbeitet werden.",
       "invalid_analysis_date": "Bitte wähle ein gültiges Analysedatum aus.",
-      "unknown": "Beim Lesen der PDF ist ein unerwarteter Fehler aufgetreten."
+      "unknown": "Beim Lesen der PDF ist ein unerwarteter Fehler aufgetreten.",
+      "invalid_aquarium_profile": "Bitte gib ein Netto-Wasservolumen über 0 L und ein Versorgungssystem an."
     }
   }
 }
