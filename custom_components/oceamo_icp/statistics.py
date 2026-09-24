@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time
+import re
 from typing import Any
 
 from homeassistant.components.recorder.models import (
@@ -18,11 +19,20 @@ from homeassistant.util import dt as dt_util
 from .const import CONF_REPORTS, DOMAIN
 
 
+def _statistic_slug(value: str) -> str:
+    """Return a Home Assistant compatible statistic-id slug."""
+    value = value.lower()
+    value = re.sub(r"[^a-z0-9_]+", "_", value)
+    value = re.sub(r"_+", "_", value)
+    return value.strip("_")
+
+
 def statistic_id_for(entry: ConfigEntry, measurement: dict[str, Any]) -> str:
     """Return the external statistic ID for one measurement."""
-    category = measurement.get("category", "unknown")
-    key = measurement.get("key", "unknown")
-    return f"{DOMAIN}:{entry.entry_id}_{category}_{key}"
+    entry_id = _statistic_slug(entry.entry_id)
+    category = _statistic_slug(str(measurement.get("category", "unknown")))
+    key = _statistic_slug(str(measurement.get("key", "unknown")))
+    return f"{DOMAIN}:{entry_id}_{category}_{key}"
 
 
 def _report_start(hass: HomeAssistant, report: dict[str, Any]) -> datetime | None:
