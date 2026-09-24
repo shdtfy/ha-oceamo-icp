@@ -146,7 +146,7 @@ def _measurement_map(report: dict[str, Any] | None) -> dict[tuple[str, str], dic
         return {}
 
     return {
-        _measurent_key(measurement): measurement
+        _measurement_key(measurement): measurement
         for measurement in report.get("measurements", [])
     }
 
@@ -213,7 +213,7 @@ def _measurement_with_history(
             "delta": delta,
             "trend": _trend(delta),
         }
-     )
+    )
     return enriched
 
 
