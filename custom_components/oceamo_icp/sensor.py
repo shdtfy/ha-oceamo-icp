@@ -9,12 +9,16 @@ from typing import Any, override
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
 from .const import CONF_REPORTS, DOMAIN
 from .statistics import statistic_id_for
+
+ANALYSIS_NUMBER_UNIQUE_ID_V1 = "_analysis_number"
+ANALYSIS_NUMBER_UNIQUE_ID_V2 = "_analysis_number_v2"
 
 
 def _reports(entry: ConfigEntry) -> list[dict[str, Any]]:
@@ -27,6 +31,39 @@ def _latest_report(entry: ConfigEntry) -> dict[str, Any]:
         reports,
         key=lambda item: item.get("metadata", {}).get("analysis_date", ""),
     )
+
+
+def _migrate_analysis_number_entity(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Migrate the analysis-number entity away from the v0.2.2/v0.2.3 registry entry.
+
+    On installations where the entity was introduced as an update to an existing
+    config entry, Home Assistant could retain an unavailable state for the original
+    registry binding. Keep the same entity_id and user customizations, but move the
+    registry entry to a fresh unique_id and remove the stale state before the entity
+    is added again.
+    """
+    entity_registry = er.async_get(hass)
+    old_unique_id = f"{entry.entry_id}{ANALYSIS_NUMBER_UNIQUE_ID_V1}"
+    new_unique_id = f"{entry.entry_id}{ANALYSIS_NUMBER_UNIQUE_ID_V2}"
+
+    # Nothing to migrate if the new unique ID already exists.
+    if entity_registry.async_get_entity_id("sensor", DOMAIN, new_unique_id):
+        return
+
+    old_entity_id = entity_registry.async_get_entity_id(
+        "sensor", DOMAIN, old_unique_id
+    )
+    if old_entity_id is None:
+        return
+
+    entity_registry.async_update_entity(
+        old_entity_id,
+        new_unique_id=new_unique_id,
+    )
+
+    # Remove a stale unavailable state so the platform can claim the same
+    # entity_id cleanly during this setup.
+    hass.states.async_remove(old_entity_id)
 
 
 def _stored_report_summary(entry: ConfigEntry) -> list[dict[str, Any]]:
@@ -88,6 +125,8 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
+    _migrate_analysis_number_entity(hass, entry)
+
     report = _latest_report(entry)
     entities: list[SensorEntity] = [
         OceamoReportSensor(entry, report),
@@ -180,7 +219,9 @@ class OceamoAnalysisNumberSensor(OceamoBaseSensor):
 
     def __init__(self, entry: ConfigEntry, report: dict[str, Any]) -> None:
         super().__init__(entry, report)
-        self._attr_unique_id = f"{entry.entry_id}_analysis_number"
+        self._attr_unique_id = (
+            f"{entry.entry_id}{ANALYSIS_NUMBER_UNIQUE_ID_V2}"
+        )
         metadata = report.get("metadata", {})
         self._attr_native_value = metadata.get("analysis_number")
         self._attr_extra_state_attributes = {
