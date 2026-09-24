@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.3 - Development
+
+### Fixed
+
+- Fixed the manual analysis-date fallback not opening after version `0.8.2`.
+- The parser correctly raised `MissingAnalysisDateError`, but the upload wrapper accidentally caught the flow-only `PendingAnalysisDateError` instead. The parser error therefore fell through to the generic invalid-PDF handling.
+- Supported reports without a trustworthy date now correctly transition to the Home Assistant date-selector step while preserving the uploaded PDF for reparsing.
+
+### Changed
+
+- Updated the integration version to `0.8.3`.
+
+
 ## 0.8.2 - Development
 
 ### Added
