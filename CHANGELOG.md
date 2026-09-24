@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.4 - Development
+
+### Fixed
+
+- Fixed the manual analysis-date form failing with an unexpected error after a date was selected.
+- `config_flow.py` used `re.fullmatch()` to validate the selected `YYYY-MM-DD` value but was missing the `re` import, causing a `NameError` at submission time.
+- Manual date selection can now continue to reparsing and storing the supported ICP report.
+
+### Changed
+
+- Updated the integration version to `0.8.4`.
+
+
 ## 0.8.3 - Development
 
 ### Fixed
@@ -11,6 +24,7 @@
 ### Changed
 
 - Updated the integration version to `0.8.3`.
+
 
 
 ## 0.8.2 - Development
