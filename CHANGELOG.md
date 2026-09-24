@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.9.0 - Development
+
+### Added
+
+- Added a persistent aquarium profile with **net water volume** and **dosing / supply system**.
+- New aquariums now require both profile values before the first ICP is imported.
+- Added built-in supply-system presets for **Fauna Marin Balling Light**, **ATI Essentials pro**, **TRITON Method** and **Oceamo DUO**, plus analysis-only mode and support for custom system names.
+- Added a new options menu with separate **Import another ICP analysis** and **Aquarium settings** actions.
+- Existing aquariums can add or change their volume and supply system without touching stored ICP reports.
+- Exposed `aquarium_volume_l`, `supply_system` and `supply_system_name` on the Reef ICP status sensor.
+- Added aquarium profile chips to the bundled dashboard card.
+- Added the provider-independent **Laboratory interpretation** panel to the card when the current report contains interpretation/evaluation text.
+
+### Changed
+
+- Aquarium profile settings are preserved automatically when new ICP reports are imported or existing reports are replaced.
+- Laboratory choice and supply-system choice are now explicitly independent in the data model.
+- The bundled card cache/version is now `0.9.0`.
+- Updated the integration version to `0.9.0`.
+
+### Foundation for next step
+
+- System-specific recommendations will use the normalized ICP values together with the aquarium's stored net water volume and supply system.
+- Original laboratory product recommendations remain stored in report data but are not treated as the aquarium's primary dosing recommendation.
+
+
 ## 0.8.5 - Development
 
 ### Fixed

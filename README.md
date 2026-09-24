@@ -150,6 +150,21 @@ Reef ICP stores the laboratory provider separately from a report-type hint. This
 
 Current report-type hints include `classic_icp`, `reef_icp_ms`, `reef_icp`, `ati_icp` and `triton_legacy_icp`. Future parsers can add further types such as ATI Ultimate-MS while keeping the same provider-neutral history model.
 
+## Aquarium profile
+
+Reef ICP separates the aquarium itself from the laboratory that performs an ICP.
+
+Each aquarium can now store:
+
+- **Net water volume** in liters
+- **Dosing / supply system**, independent of the ICP laboratory
+
+Built-in presets currently include **Fauna Marin Balling Light**, **ATI Essentials pro**, **TRITON Method** and **Oceamo DUO**. The selector also accepts a custom system name, and an aquarium can be set to analysis-only mode.
+
+These settings remain attached to the aquarium when additional reports from Oceamo, Fauna Marin, ATI, TRITON or future providers are imported. Existing aquariums can edit the profile through **Configure → Aquarium settings**.
+
+This is the foundation for a provider-independent recommendation engine: laboratory measurements stay normalized by Reef ICP, while future dosing recommendations can be generated for the aquarium's chosen supply system and net water volume rather than blindly copying the laboratory's product recommendations.
+
 ## Multi-provider history
 
 Reports from different providers can be stored in the same aquarium.
@@ -173,7 +188,7 @@ Measurements that are not directly comparable remain separate. For example, Faun
 
 ## Importing another ICP
 
-Open **Settings → Devices & services → Reef ICP → Configure** and upload the ICP PDF.
+Open **Settings → Devices & services → Reef ICP → Configure → Import another ICP analysis** and upload the ICP PDF.
 
 **Reef ICP detects the laboratory automatically.** The detector checks several provider-specific fingerprints in the PDF and then routes the file to the matching parser. The parser validates the detected format again before anything is stored.
 
@@ -203,6 +218,7 @@ A manually selected date is stored with `analysis_date_source: manual`.
 
 - Install as a HACS custom repository
 - Add **Reef ICP** under **Settings → Devices & services**
+- Create an aquarium profile with net water volume and a persistent dosing/supply system
 - Import ICP PDFs directly in Home Assistant
 - Store up to 100 reports per aquarium
 - Keep reports in chronological sample order
@@ -360,7 +376,7 @@ https://github.com/shdtfy/ha-oceamo-icp
 - [x] Stable measurement entities when providers omit analytes
 - [x] Reef ICP project branding
 - [x] README screenshots
-- [ ] Show Oceamo interpretation / evaluation text inside the card
+- [x] Show laboratory interpretation / evaluation text inside the card when present
 - [ ] Show laboratory dosing recommendations inside the card
 - [ ] Older ATI layouts and ATI Pro / Ultimate-MS variants
 - [x] Oceamo Reef ICP-MS / current ICP-MS report layout
