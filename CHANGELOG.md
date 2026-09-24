@@ -2,6 +2,13 @@
 
 ## 0.3.2 - Development
 
+### Added
+
+- Added bundled integration branding under `custom_components/oceamo_icp/brand/`.
+- Added a dedicated `icon.png` for the Home Assistant integration.
+- Added a dedicated `logo.png` for the integration and project branding.
+- Added the Oceamo ICP logo as the header banner in the repository README.
+
 ### Changed
 
 - Polished the bundled Oceamo ICP dashboard card for mobile and desktop layouts.
@@ -28,7 +35,7 @@
 
 - Added the first bundled `Oceamo ICP Card` for Home Assistant dashboards.
 - The integration now serves and automatically loads the card through the Home Assistant frontend.
-- No separate HACS frontend repository or manual Lovelace resource entry is required.
+- No separate HACS frontend repository and no manual Lovelace resource entry are required.
 - Added a visual editor for choosing the `ICP Status` entity, an optional title and previous-analysis display.
 - Card shows analysis metadata, overall status, status counts, collapsible categories, targets, previous values, deltas and trend direction.
 - Added German and English card labels.
