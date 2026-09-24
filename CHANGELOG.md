@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.2 - Development
+
+### Changed
+
+- Polished the bundled Oceamo ICP dashboard card for mobile and desktop layouts.
+- Kept the overall analysis status in the title row on narrow screens instead of moving it below the header.
+- Added labels to the green, yellow and red status counters.
+- Refined category headers, status markers, spacing and typography.
+- Added a subtle theme-aware header glow while keeping Home Assistant theme colors.
+- Delta badges now indicate whether the current value moved closer to or farther from the target value or target range.
+- Category open/closed state is preserved while the card is live.
+- Updated the card's internal version to `0.3.2`.
+
 ## 0.3.1 - Development
 
 ### Fixed
