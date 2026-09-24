@@ -33,6 +33,10 @@ class UnsupportedIcpProviderError(IcpParseError):
     """Raised when Reef ICP cannot identify a supported provider."""
 
 
+class MissingAnalysisDateError(IcpParseError):
+    """Raised when a supported report has no trustworthy analysis date."""
+
+
 # Backward-compatible exception name for existing imports/tests.
 OceamoParseError = IcpParseError
 
@@ -516,6 +520,116 @@ def _date_at_noon(value: str) -> str:
     return parsed.replace(hour=12).isoformat()
 
 
+def _validated_iso_date(value: str) -> str:
+    """Validate and normalize an ISO YYYY-MM-DD date."""
+    return datetime.strptime(value.strip(), "%Y-%m-%d").date().isoformat()
+
+
+def _analysis_date_from_filename(path: str | Path) -> str | None:
+    """Extract a plausible calendar date from a PDF filename.
+
+    Supported forms include YYYYMMDD, YYYY-MM-DD, YYYY_MM_DD, DD.MM.YYYY,
+    DD-MM-YYYY and DD_MM_YYYY. Invalid calendar dates are ignored.
+    """
+    name = Path(path).name
+    patterns: tuple[tuple[str, str], ...] = (
+        (r"(?<!\d)((?:19|20)\d{2}\d{2}\d{2})(?!\d)", "%Y%m%d"),
+        (r"(?<!\d)((?:19|20)\d{2}[-_.]\d{2}[-_.]\d{2})(?!\d)", None),
+        (r"(?<!\d)(\d{2}[.-]\d{2}[.-](?:19|20)\d{2})(?!\d)", None),
+        (r"(?<!\d)(\d{2}_\d{2}_(?:19|20)\d{2})(?!\d)", None),
+    )
+
+    for pattern, fmt in patterns:
+        match = re.search(pattern, name)
+        if not match:
+            continue
+        raw = match.group(1)
+        try:
+            if fmt == "%Y%m%d":
+                parsed = datetime.strptime(raw, fmt).date()
+            elif re.match(r"^(?:19|20)\d{2}", raw):
+                parsed = datetime.strptime(
+                    raw.replace("_", "-").replace(".", "-"),
+                    "%Y-%m-%d",
+                ).date()
+            else:
+                parsed = datetime.strptime(
+                    raw.replace("_", ".").replace("-", "."),
+                    "%d.%m.%Y",
+                ).date()
+            return parsed.isoformat()
+        except ValueError:
+            continue
+    return None
+
+
+def _date_from_sample_taken(value: Any) -> str | None:
+    """Return the calendar date from an already parsed sample timestamp."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text).date().isoformat()
+    except ValueError:
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+            try:
+                return _validated_iso_date(text)
+            except ValueError:
+                return None
+    return None
+
+
+def _ensure_analysis_date(
+    metadata: dict[str, Any],
+    path: str | Path,
+    analysis_date_override: str | None = None,
+) -> None:
+    """Ensure every supported report has a trustworthy analysis date.
+
+    Priority:
+    1. A provider-specific date parsed from the report itself.
+    2. A parsed sample-taking timestamp when that is the only report date.
+    3. A plausible date embedded in the original PDF filename.
+    4. A date explicitly selected by the user in Home Assistant.
+
+    PDF CreationDate metadata is deliberately ignored because it only tells us
+    when the PDF file was created/exported and can differ from the laboratory
+    analysis or sampling date.
+    """
+    if metadata.get("analysis_date"):
+        metadata.setdefault("analysis_date_source", "document")
+        return
+
+    if sample_date := _date_from_sample_taken(metadata.get("sample_taken")):
+        metadata["analysis_date"] = sample_date
+        metadata["analysis_date_source"] = "sample_taken"
+        return
+
+    if filename_date := _analysis_date_from_filename(path):
+        metadata["analysis_date"] = filename_date
+        metadata["analysis_date_source"] = "filename"
+        return
+
+    if analysis_date_override is not None:
+        try:
+            metadata["analysis_date"] = _validated_iso_date(
+                str(analysis_date_override)
+            )
+        except ValueError as err:
+            raise MissingAnalysisDateError(
+                "The selected analysis date is invalid."
+            ) from err
+        metadata["analysis_date_source"] = "manual"
+        return
+
+    provider_name = str(metadata.get("provider_name") or "ICP")
+    raise MissingAnalysisDateError(
+        f"{provider_name} report does not contain a trustworthy analysis date."
+    )
+
+
 def _parse_target(raw: str) -> dict[str, Any]:
     """Parse Oceamo's ideal/target value representation."""
     normalized = raw.replace(" ", "")
@@ -846,10 +960,14 @@ def _extract_oceamo_product_recommendations(text: str) -> str | None:
     return value or None
 
 
-def parse_oceamo_pdf(path: str | Path) -> dict[str, Any]:
+def parse_oceamo_pdf(
+    path: str | Path,
+    analysis_date_override: str | None = None,
+) -> dict[str, Any]:
     """Parse classic Oceamo and Oceamo Reef ICP-MS PDF reports."""
+    source_path = Path(path)
     try:
-        reader = PdfReader(str(path))
+        reader = PdfReader(str(source_path))
     except Exception as err:  # noqa: BLE001
         raise IcpParseError("The uploaded file is not a readable PDF.") from err
 
@@ -943,8 +1061,7 @@ def parse_oceamo_pdf(path: str | Path) -> dict[str, Any]:
         raise IcpParseError("No ICP measurements were found in the report.")
     if "analysis_number" not in metadata:
         raise IcpParseError("The analysis number could not be found.")
-    if "analysis_date" not in metadata:
-        raise IcpParseError("The analysis date could not be found.")
+    _ensure_analysis_date(metadata, source_path, analysis_date_override)
 
     return {
         "schema_version": 2,
@@ -1139,10 +1256,14 @@ def _parse_fauna_total_phosphate(line: str) -> dict[str, Any] | None:
     return measurement
 
 
-def parse_fauna_marin_pdf(path: str | Path) -> dict[str, Any]:
+def parse_fauna_marin_pdf(
+    path: str | Path,
+    analysis_date_override: str | None = None,
+) -> dict[str, Any]:
     """Parse the tested Fauna Marin Reef ICP one-page PDF format."""
+    source_path = Path(path)
     try:
-        reader = PdfReader(str(path))
+        reader = PdfReader(str(source_path))
     except Exception as err:  # noqa: BLE001
         raise IcpParseError("The uploaded file is not a readable PDF.") from err
 
@@ -1197,8 +1318,7 @@ def parse_fauna_marin_pdf(path: str | Path) -> dict[str, Any]:
         raise IcpParseError("No ICP measurements were found in the report.")
     if "analysis_number" not in metadata:
         raise IcpParseError("The Fauna Marin sample ID could not be found.")
-    if "analysis_date" not in metadata:
-        raise IcpParseError("The Fauna Marin report date could not be found.")
+    _ensure_analysis_date(metadata, source_path, analysis_date_override)
 
     return {
         "schema_version": 2,
@@ -1292,14 +1412,13 @@ def _triton_status_with_direction(
 
 
 def _extract_triton_legacy_date(
-    path: Path, reader: PdfReader, text: str
+    path: Path, _reader: PdfReader, text: str
 ) -> tuple[str | None, str | None]:
-    """Find the best available date for a legacy TRITON report.
+    """Find a trustworthy date for a legacy TRITON report.
 
     The tested 2014 PDF does not print a report date in its table. Prefer a
-    YYYYMMDD date embedded in the filename (as distributed/archived), then a
-    date printed in the document if a close variant includes one, and finally
-    the PDF CreationDate metadata.
+    date embedded in the filename, then a date printed in the document.
+    PDF CreationDate metadata is intentionally ignored.
     """
     filename_match = re.search(r"(?<!\d)((?:19|20)\d{6})(?!\d)", path.name)
     if filename_match:
@@ -1325,20 +1444,6 @@ def _extract_triton_legacy_date(
             else:
                 parsed = datetime.strptime(value.replace("/", "."), "%d.%m.%Y").date()
             return parsed.isoformat(), "document"
-        except ValueError:
-            pass
-
-    metadata = reader.metadata or {}
-    creation = str(metadata.get("/CreationDate") or "")
-    creation_match = re.search(r"D:(\d{8})", creation)
-    if creation_match:
-        try:
-            return (
-                datetime.strptime(creation_match.group(1), "%Y%m%d")
-                .date()
-                .isoformat(),
-                "pdf_metadata",
-            )
         except ValueError:
             pass
 
@@ -1445,7 +1550,10 @@ def _parse_triton_legacy_measurement(
     return measurement
 
 
-def parse_triton_legacy_pdf(path: str | Path) -> dict[str, Any]:
+def parse_triton_legacy_pdf(
+    path: str | Path,
+    analysis_date_override: str | None = None,
+) -> dict[str, Any]:
     """Parse the tested legacy TRITON ICP-OES table format."""
     source_path = Path(path)
     try:
@@ -1504,14 +1612,9 @@ def parse_triton_legacy_pdf(path: str | Path) -> dict[str, Any]:
     analysis_date, date_source = _extract_triton_legacy_date(
         source_path, reader, full_text
     )
-    if analysis_date is None:
-        raise IcpParseError(
-            "The legacy TRITON report does not contain a usable analysis date."
-        )
 
     printed_id = _triton_legacy_printed_id(full_text)
     provider_report_id = _triton_legacy_report_id(full_text)
-    compact_date = analysis_date.replace("-", "")
     if "korrektur dosierung / ml" in normalized:
         layout_variant = "correction_maintenance"
     else:
@@ -1521,12 +1624,16 @@ def parse_triton_legacy_pdf(path: str | Path) -> dict[str, Any]:
         "provider": PROVIDER_TRITON,
         "provider_name": PROVIDER_NAMES[PROVIDER_TRITON],
         "report_type": "triton_legacy_icp",
-        "analysis_date": analysis_date,
-        "analysis_date_source": date_source,
-        "analysis_number": printed_id or f"TRITON-{compact_date}",
         "provider_report_id": provider_report_id,
         "legacy_layout_variant": layout_variant,
     }
+    if analysis_date is not None:
+        metadata["analysis_date"] = analysis_date
+        metadata["analysis_date_source"] = date_source
+
+    _ensure_analysis_date(metadata, source_path, analysis_date_override)
+    compact_date = str(metadata["analysis_date"]).replace("-", "")
+    metadata["analysis_number"] = printed_id or f"TRITON-{compact_date}"
 
     if volumes:
         rounded = {round(value, 6) for value in volumes}
@@ -1891,10 +1998,14 @@ def _parse_ati_measurements(text: str) -> list[dict[str, Any]]:
     return deduplicated
 
 
-def parse_ati_pdf(path: str | Path) -> dict[str, Any]:
+def parse_ati_pdf(
+    path: str | Path,
+    analysis_date_override: str | None = None,
+) -> dict[str, Any]:
     """Parse the current ATI laboratory analysis PDF layout."""
+    source_path = Path(path)
     try:
-        reader = PdfReader(str(path))
+        reader = PdfReader(str(source_path))
     except Exception as err:  # noqa: BLE001
         raise IcpParseError("The uploaded file is not a readable PDF.") from err
 
@@ -1920,8 +2031,7 @@ def parse_ati_pdf(path: str | Path) -> dict[str, Any]:
         raise IcpParseError("No ATI ICP measurements were found in the report.")
     if "analysis_number" not in metadata:
         raise IcpParseError("The ATI analysis ID could not be found.")
-    if "analysis_date" not in metadata:
-        raise IcpParseError("The ATI evaluation date could not be found.")
+    _ensure_analysis_date(metadata, source_path, analysis_date_override)
 
     return {
         "schema_version": 2,
@@ -2006,18 +2116,21 @@ def detect_icp_provider(path: str | Path) -> str:
     )
 
 
-def parse_icp_pdf(path: str | Path) -> dict[str, Any]:
+def parse_icp_pdf(
+    path: str | Path,
+    analysis_date_override: str | None = None,
+) -> dict[str, Any]:
     """Detect the provider and dispatch an uploaded PDF automatically."""
     provider = detect_icp_provider(path)
 
     if provider == PROVIDER_OCEAMO:
-        return parse_oceamo_pdf(path)
+        return parse_oceamo_pdf(path, analysis_date_override)
     if provider == PROVIDER_FAUNA_MARIN:
-        return parse_fauna_marin_pdf(path)
+        return parse_fauna_marin_pdf(path, analysis_date_override)
     if provider == PROVIDER_ATI:
-        return parse_ati_pdf(path)
+        return parse_ati_pdf(path, analysis_date_override)
     if provider == PROVIDER_TRITON:
-        return parse_triton_legacy_pdf(path)
+        return parse_triton_legacy_pdf(path, analysis_date_override)
 
     # Kept as a defensive guard for future detector additions.
     raise UnsupportedIcpProviderError(f"Unsupported ICP provider: {provider}")

@@ -36,6 +36,7 @@ from .const import (
 )
 from .parser import (
     IcpParseError,
+    MissingAnalysisDateError,
     PROVIDER_NAMES,
     UnsupportedIcpProviderError,
     detect_icp_provider,
@@ -45,11 +46,9 @@ from .parser import (
 CONF_ANALYSIS_DATE = "analysis_date"
 CONF_PDF_FILE = "pdf_file"
 
-_MISSING_ANALYSIS_DATE_TEXT = "does not contain a usable analysis date"
 
-
-class MissingAnalysisDateError(Exception):
-    """Raised when a supported report needs a manually selected date."""
+class PendingAnalysisDateError(Exception):
+    """Carry a preserved upload into the manual date-selection step."""
 
     def __init__(self, pending_pdf_path: str, provider: str) -> None:
         super().__init__("The ICP report needs a manually selected analysis date.")
@@ -92,12 +91,12 @@ def _parse_uploaded_pdf(
     try:
         provider = detect_icp_provider(preserved_path)
         report = parse_icp_pdf(preserved_path)
+    except PendingAnalysisDateError as err:
+        raise PendingAnalysisDateError(str(preserved_path), provider) from err
     except UnsupportedIcpProviderError:
         _cleanup_pending_pdf(str(preserved_path))
         raise
-    except IcpParseError as err:
-        if _MISSING_ANALYSIS_DATE_TEXT in str(err).casefold():
-            raise MissingAnalysisDateError(str(preserved_path), provider) from err
+    except IcpParseError:
         _cleanup_pending_pdf(str(preserved_path))
         raise
     except Exception:
@@ -122,31 +121,16 @@ def _parse_pending_pdf_with_date(
     pending_pdf_path: str,
     selected_date: Any,
 ) -> dict[str, Any]:
-    """Reparse a preserved report with a user-selected date in its temp filename."""
+    """Reparse a preserved supported report with the user-selected date."""
     source_path = Path(pending_pdf_path)
     if not source_path.exists():
         raise IcpParseError("The preserved uploaded PDF is no longer available.")
 
     date_value = _normalize_selected_date(selected_date)
-    compact_date = date_value.replace("-", "")
-    suffix = source_path.suffix if source_path.suffix else ".pdf"
-    dated_path = source_path.with_name(
-        f"{source_path.stem}_{compact_date}{suffix}"
+    return parse_icp_pdf(
+        source_path,
+        analysis_date_override=date_value,
     )
-
-    shutil.copy2(source_path, dated_path)
-    try:
-        report = parse_icp_pdf(dated_path)
-    finally:
-        try:
-            dated_path.unlink(missing_ok=True)
-        except OSError:
-            pass
-
-    metadata = report.setdefault("metadata", {})
-    metadata["analysis_date"] = date_value
-    metadata["analysis_date_source"] = "manual"
-    return report
 
 
 def _report_provider(report: dict[str, Any]) -> str:
@@ -224,7 +208,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                     self.hass,
                     user_input[CONF_PDF_FILE],
                 )
-            except MissingAnalysisDateError as err:
+            except PendingAnalysisDateError as err:
                 self._pending_pdf_path = err.pending_pdf_path
                 self._pending_provider = err.provider
                 self._pending_aquarium_name = user_input[
@@ -338,7 +322,7 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
                     self.hass,
                     user_input[CONF_PDF_FILE],
                 )
-            except MissingAnalysisDateError as err:
+            except PendingAnalysisDateError as err:
                 self._pending_pdf_path = err.pending_pdf_path
                 self._pending_provider = err.provider
                 return await self.async_step_analysis_date()

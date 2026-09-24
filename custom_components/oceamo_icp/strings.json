@@ -11,7 +11,7 @@
       },
       "analysis_date": {
         "title": "Select analysis date",
-        "description": "Reef ICP detected {provider}, but no reliable analysis date could be found in the report, filename or PDF metadata. Select the date of this analysis.",
+        "description": "Reef ICP detected {provider}, but no trustworthy analysis date could be found in the report or filename. Select the date of this analysis.",
         "data": {
           "analysis_date": "Analysis date"
         }
@@ -35,7 +35,7 @@
       },
       "analysis_date": {
         "title": "Select analysis date",
-        "description": "Reef ICP detected {provider}, but no reliable analysis date could be found in the report, filename or PDF metadata. Select the date of this analysis.",
+        "description": "Reef ICP detected {provider}, but no trustworthy analysis date could be found in the report or filename. Select the date of this analysis.",
         "data": {
           "analysis_date": "Analysis date"
         }
