@@ -138,6 +138,7 @@ The ATI parser has been developed against a real public current-format ATI repor
 - Normalizes comparable analytes into the shared Reef ICP history
 - Uses the printed TRITON report ID when present (for example `296B`); otherwise generates a stable provider-local ID
 - Uses a date embedded in the PDF filename when available; otherwise falls back to a document date or PDF creation metadata
+- If a supported report still has no reliable date, the Home Assistant import flow asks for the analysis date instead of rejecting the PDF
 
 The currently supported TRITON family is explicitly treated as `triton_legacy_icp`. It has been tested against two real two-page German TRITON ICP-OES reports from 2014 and 2015. Current TRITON reports may use a different layout and remain a separate compatibility target until a representative modern result is available.
 
@@ -181,7 +182,7 @@ Currently detected automatically:
 - ATI
 - TRITON (tested legacy ICP-OES format)
 
-If no supported provider can be identified, the import stops instead of guessing. A report is replaced only when both its provider and provider report ID match an already stored report.
+If no supported provider can be identified, the import stops instead of guessing. If the provider/report is supported but no reliable analysis date can be found, Reef ICP opens a second step with a native Home Assistant date selector. A report is replaced only when both its provider and provider report ID match an already stored report.
 
 ## What it currently does
 
@@ -349,6 +350,7 @@ https://github.com/shdtfy/ha-oceamo-icp
 - [ ] Older ATI layouts and ATI Pro / Ultimate-MS variants
 - [x] Oceamo Reef ICP-MS / current ICP-MS report layout
 - [x] TRITON legacy ICP-OES (tested 2014 + 2015 layouts)
+- [x] Manual analysis-date fallback for supported reports without a detectable date
 - [ ] Current TRITON ICP-OES report layout
 - [ ] Reef Factory Smart ICP-OES
 - [ ] Additional newer Oceamo report variants if the PDF layout changes

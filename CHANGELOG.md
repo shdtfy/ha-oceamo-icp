@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.1 - Development
+
+### Added
+
+- Added a manual analysis-date fallback to both the initial setup flow and the **Import another ICP analysis** options flow.
+- If Reef ICP recognizes and parses a supported report but cannot determine a reliable analysis date from the PDF, filename or PDF metadata, Home Assistant now opens a native date selector instead of rejecting the report.
+- The selected date is stored as the report's `analysis_date` with `analysis_date_source: manual`.
+- The uploaded PDF is preserved only for the duration of the fallback step so it can be reparsed after the date is selected; normal successful and failed imports clean up their temporary copy immediately.
+- The fallback is provider-neutral at the config-flow level and currently fixes date-less legacy TRITON reports such as the tested 2014 PDF without requiring a renamed file.
+
+### Changed
+
+- Updated the integration version to `0.8.1`.
+- Updated German and English config-flow text for the new analysis-date step.
+- Updated the README to document the manual date fallback.
+
+
 ## 0.8.0 - Development
 
 ### Added
