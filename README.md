@@ -165,6 +165,22 @@ These settings remain attached to the aquarium when additional reports from Ocea
 
 This is the foundation for a provider-independent recommendation engine: laboratory measurements stay normalized by Reef ICP, while future dosing recommendations can be generated for the aquarium's chosen supply system and net water volume rather than blindly copying the laboratory's product recommendations.
 
+## Supply-system recommendations
+
+Reef ICP keeps laboratory interpretation separate from the aquarium's own supply system.
+
+Starting with version `0.9.1`, **Fauna Marin Balling Light** has an initial provider-independent correction engine for the three core Balling Light solutions:
+
+- Calcium / canister 1
+- Magnesium / canister 2
+- Alkalinity / canister 3
+
+The correction uses the aquarium's stored net water volume and the normalized current/target values from the imported ICP, so the calculation works regardless of which supported laboratory produced the report.
+
+The current Balling Light implementation uses the manufacturer's standard working-solution strengths. Calculated amounts are shown as **correction doses**, not as permanent daily maintenance doses. Daily Balling Light dosing must still be adjusted to the aquarium's real consumption.
+
+Automatic Balling Trace / Elementals trace-element correction is intentionally not calculated yet because those products require additional product-specific limits and, for Balling Trace adjustments, information about the current stock-solution recipe and remaining canister volume.
+
 ## Multi-provider history
 
 Reports from different providers can be stored in the same aquarium.

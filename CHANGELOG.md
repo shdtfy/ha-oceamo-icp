@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.9.1 - Development
+
+### Added
+
+- Added the first provider-independent supply-system recommendation engine.
+- **Fauna Marin Balling Light** now calculates correction amounts for calcium, magnesium and alkalinity from the aquarium's stored net volume plus normalized ICP current/target values.
+- The calculation works independently of the laboratory that produced the ICP report.
+- Added `supply_recommendations` to the `ICP Status` sensor attributes.
+- Added a separate collapsible **Recommendations for your supply system** panel to the bundled card.
+
+### Changed
+
+- The laboratory interpretation panel is now collapsed by default and can be expanded on demand.
+- Balling Light amounts are explicitly labelled as correction doses rather than permanent daily maintenance dosing.
+- Trace-element corrections are not guessed. The card states that Balling Trace / Elementals support still requires product-specific dosing rules and additional stock-solution context.
+- Updated the bundled card cache and integration version to `0.9.1`.
+
+
 ## 0.9.0 - Development
 
 ### Added
