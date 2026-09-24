@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.3 - Development
+
+### Added
+
+- Added compact per-category status summaries to the Oceamo ICP dashboard card.
+- Category headers now show the number of green, yellow, red and unknown measurements using small status dots and counts.
+- Added localized tooltips to category total counters so it is immediately clear that the number represents measurements.
+
+### Changed
+
+- Refined category-header spacing for desktop and mobile layouts.
+- Updated the bundled card and integration version to `0.3.3`.
+
 ## 0.3.2 - Development
 
 ### Added
