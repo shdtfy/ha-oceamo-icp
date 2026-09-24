@@ -1,12 +1,22 @@
 # Changelog
 
+## 0.2.4 - Development
+
+### Fixed
+
+- Added a one-time entity-registry migration for the `Analysis number` sensor.
+- Keeps the existing entity ID and user customizations while moving the sensor
+  to a fresh unique ID.
+- Removes a stale unavailable state before the migrated entity is re-added.
+- This targets installations where the analysis-number sensor was introduced
+  after the Oceamo config entry already existed.
+
 ## 0.2.3 - Development
 
 ### Fixed
 
 - Made all PDF-backed Oceamo sensors explicitly non-polling.
 - Simplified the `Analysis number` sensor to publish its string value and attributes directly during entity creation.
-- Intended to prevent the analysis-number entity from becoming unavailable after initial setup/reload.
 
 ## 0.2.2 - Development
 
@@ -38,7 +48,6 @@
 ### Changed
 
 - Added `recorder` as a dependency.
-- Integration version bumped to 0.2.0.
 
 ## 0.1.0 - Development
 
