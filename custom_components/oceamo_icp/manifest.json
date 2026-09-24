@@ -6,7 +6,8 @@
   ],
   "config_flow": true,
   "dependencies": [
-    "file_upload"
+    "file_upload",
+    "recorder"
   ],
   "documentation": "https://github.com/shdtfy/ha-oceamo-icp",
   "integration_type": "service",
@@ -14,5 +15,5 @@
   "requirements": [
     "pypdf==6.19.0"
   ],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }

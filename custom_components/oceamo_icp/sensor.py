@@ -6,11 +6,7 @@ from collections import Counter
 from datetime import date
 from typing import Any, override
 
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntity,
-    SensorStateClass,
-)
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -18,28 +14,33 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
 from .const import CONF_REPORTS, DOMAIN
+from .statistics import statistic_id_for
 
 
 def _reports(entry: ConfigEntry) -> list[dict[str, Any]]:
-    """Return stored reports."""
     return list(entry.options.get(CONF_REPORTS, []))
 
 
 def _latest_report(entry: ConfigEntry) -> dict[str, Any]:
-    """Return the newest stored report by analysis date."""
     reports = _reports(entry)
-    return max(
-        reports,
-        key=lambda item: item.get("metadata", {}).get("analysis_date", ""),
-    )
+    return max(reports, key=lambda item: item.get("metadata", {}).get("analysis_date", ""))
+
+
+def _stored_report_summary(entry: ConfigEntry) -> list[dict[str, Any]]:
+    summaries: list[dict[str, Any]] = []
+    for report in sorted(_reports(entry), key=lambda item: item.get("metadata", {}).get("analysis_date", "")):
+        metadata = report.get("metadata", {})
+        summaries.append({
+            "analysis_number": metadata.get("analysis_number"),
+            "analysis_date": metadata.get("analysis_date"),
+            "sample_taken": metadata.get("sample_taken"),
+            "tank_type": metadata.get("tank_type"),
+        })
+    return summaries
 
 
 def _status_counts(report: dict[str, Any]) -> dict[str, int]:
-    """Count status severities in a report."""
-    counts = Counter(
-        measurement.get("status", {}).get("severity", "unknown")
-        for measurement in report.get("measurements", [])
-    )
+    counts = Counter(measurement.get("status", {}).get("severity", "unknown") for measurement in report.get("measurements", []))
     return {
         "ok": counts.get("ok", 0),
         "warning": counts.get("warning", 0),
@@ -49,7 +50,6 @@ def _status_counts(report: dict[str, Any]) -> dict[str, int]:
 
 
 def _overall_status(report: dict[str, Any]) -> str:
-    """Return the worst status in the latest report."""
     counts = _status_counts(report)
     if counts["critical"]:
         return "critical"
@@ -60,63 +60,50 @@ def _overall_status(report: dict[str, Any]) -> str:
     return "ok"
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddConfigEntryEntitiesCallback,
-) -> None:
-    """Set up Oceamo ICP sensors."""
-    report = _latest_report(entry)
+def _display_value(measurement: dict[str, Any]) -> str:
+    raw_value = measurement.get("raw_value")
+    if raw_value == "n.n.":
+        return "Nicht nachweisbar"
+    if raw_value == "n.b.":
+        return "Nicht bestimmt"
+    if raw_value is None:
+        return "Unbekannt"
+    unit = measurement.get("unit")
+    return f"{raw_value} {unit}" if unit else str(raw_value)
 
-    entities: list[SensorEntity] = [
-        OceamoReportSensor(entry, report),
-        OceamoAnalysisDateSensor(entry, report),
-    ]
-    entities.extend(
-        OceamoMeasurementSensor(entry, report, measurement)
-        for measurement in report.get("measurements", [])
-    )
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddConfigEntryEntitiesCallback) -> None:
+    report = _latest_report(entry)
+    entities: list[SensorEntity] = [OceamoReportSensor(entry, report), OceamoAnalysisDateSensor(entry, report)]
+    entities.extend(OceamoMeasurementSensor(entry, report, measurement) for measurement in report.get("measurements", []))
     async_add_entities(entities)
 
 
 class OceamoBaseSensor(SensorEntity):
-    """Base Oceamo sensor."""
-
     _attr_has_entity_name = True
 
     def __init__(self, entry: ConfigEntry, report: dict[str, Any]) -> None:
-        """Initialize base sensor."""
         self._entry = entry
         self._report = report
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name=entry.title,
-            manufacturer="Oceamo",
-            model="ICP Analysis",
-        )
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)}, name=entry.title, manufacturer="Oceamo", model="ICP Analysis")
 
 
 class OceamoReportSensor(OceamoBaseSensor):
-    """Summary/report sensor used by the future dashboard card."""
-
     _attr_name = "ICP Status"
     _attr_icon = "mdi:test-tube"
 
     def __init__(self, entry: ConfigEntry, report: dict[str, Any]) -> None:
-        """Initialize report sensor."""
         super().__init__(entry, report)
         self._attr_unique_id = f"{entry.entry_id}_report"
 
     @property
     @override
     def native_value(self) -> StateType:
-        """Return overall report status."""
         return _overall_status(self._report)
 
     @property
     @override
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return full report data for dashboards and automations."""
         metadata = self._report.get("metadata", {})
         return {
             "analysis_number": metadata.get("analysis_number"),
@@ -126,60 +113,43 @@ class OceamoReportSensor(OceamoBaseSensor):
             "status_counts": _status_counts(self._report),
             "measurements": self._report.get("measurements", []),
             "interpretation": self._report.get("interpretation"),
-            "product_recommendations": self._report.get(
-                "product_recommendations"
-            ),
+            "product_recommendations": self._report.get("product_recommendations"),
             "stored_report_count": len(_reports(self._entry)),
+            "stored_reports": _stored_report_summary(self._entry),
         }
 
 
 class OceamoAnalysisDateSensor(OceamoBaseSensor):
-    """Date of the latest imported analysis."""
-
     _attr_name = "Analysis date"
     _attr_device_class = SensorDeviceClass.DATE
     _attr_icon = "mdi:calendar"
 
     def __init__(self, entry: ConfigEntry, report: dict[str, Any]) -> None:
-        """Initialize date sensor."""
         super().__init__(entry, report)
         self._attr_unique_id = f"{entry.entry_id}_analysis_date"
 
     @property
     @override
     def native_value(self) -> date | None:
-        """Return analysis date."""
         value = self._report.get("metadata", {}).get("analysis_date")
         return date.fromisoformat(value) if value else None
 
     @property
     @override
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return report metadata."""
         return {
-            "analysis_number": self._report.get("metadata", {}).get(
-                "analysis_number"
-            ),
+            "analysis_number": self._report.get("metadata", {}).get("analysis_number"),
             "sample_taken": self._report.get("metadata", {}).get("sample_taken"),
             "tank_type": self._report.get("metadata", {}).get("tank_type"),
         }
 
 
 class OceamoMeasurementSensor(OceamoBaseSensor):
-    """One ICP measurement."""
-
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(
-        self,
-        entry: ConfigEntry,
-        report: dict[str, Any],
-        measurement: dict[str, Any],
-    ) -> None:
-        """Initialize a measurement sensor."""
+    def __init__(self, entry: ConfigEntry, report: dict[str, Any], measurement: dict[str, Any]) -> None:
         super().__init__(entry, report)
         self._measurement = measurement
-
         category = measurement.get("category", "unknown")
         key = measurement.get("key", "unknown")
         self._attr_unique_id = f"{entry.entry_id}_{category}_{key}"
@@ -190,24 +160,21 @@ class OceamoMeasurementSensor(OceamoBaseSensor):
     @property
     @override
     def native_value(self) -> StateType:
-        """Return numeric measurement or unknown for n.n./n.b."""
         return self._measurement.get("value")
 
     @property
     @override
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return Oceamo metadata for the measurement."""
         return {
             "category": self._measurement.get("category"),
             "raw_value": self._measurement.get("raw_value"),
+            "display_value": _display_value(self._measurement),
             "detected": self._measurement.get("detected"),
             "determined": self._measurement.get("determined"),
             "target": self._measurement.get("target"),
             "status": self._measurement.get("status"),
-            "analysis_number": self._report.get("metadata", {}).get(
-                "analysis_number"
-            ),
-            "analysis_date": self._report.get("metadata", {}).get(
-                "analysis_date"
-            ),
+            "analysis_number": self._report.get("metadata", {}).get("analysis_number"),
+            "analysis_date": self._report.get("metadata", {}).get("analysis_date"),
+            "sample_taken": self._report.get("metadata", {}).get("sample_taken"),
+            "historical_statistic_id": statistic_id_for(self._entry, self._measurement),
         }
