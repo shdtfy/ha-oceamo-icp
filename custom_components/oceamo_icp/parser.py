@@ -15,11 +15,13 @@ from pypdf.generic import ContentStream
 PROVIDER_OCEAMO = "oceamo"
 PROVIDER_FAUNA_MARIN = "fauna_marin"
 PROVIDER_ATI = "ati"
+PROVIDER_TRITON = "triton"
 
 PROVIDER_NAMES = {
     PROVIDER_OCEAMO: "Oceamo",
     PROVIDER_FAUNA_MARIN: "Fauna Marin",
     PROVIDER_ATI: "ATI",
+    PROVIDER_TRITON: "TRITON",
 }
 
 
@@ -286,6 +288,89 @@ _FAUNA_ANALYTES: dict[str, tuple[str, str, str, str, float]] = {
     "Hg": ("quecksilber", "Quecksilber", "pollutants", "µg/l", 1.0),
     "Pb": ("blei", "Blei", "pollutants", "µg/l", 1.0),
 }
+
+
+
+# Tested legacy TRITON ICP-OES PDF layout (2014 generation).
+#
+# The PDF contains compact tabular rows with:
+# element, analysis value, set point, deviation, a coloured warning light,
+# aquarium volume, one-time dosage and daily dosage. The warning light itself
+# is drawn as a coloured rectangle and therefore does not appear in extracted
+# text. Reef ICP reads those rectangles from the PDF content stream and aligns
+# them with the parsed rows in drawing order.
+#
+# Tuple: (key, display name, category, normalized unit)
+_TRITON_LEGACY_ANALYTES: dict[str, tuple[str, str, str, str]] = {
+    "Hg": ("quecksilber", "Quecksilber", "pollutants", "µg/l"),
+    "Se": ("selen", "Selen", "trace_elements", "µg/l"),
+    "Cd": ("cadmium", "Cadmium", "pollutants", "µg/l"),
+    "Sn": ("zinn", "Zinn", "trace_elements", "µg/l"),
+    "Sb": ("antimon", "Antimon", "pollutants", "µg/l"),
+    "As": ("arsen", "Arsen", "pollutants", "µg/l"),
+    "Al": ("aluminium", "Aluminium", "pollutants", "µg/l"),
+    "Pb": ("blei", "Blei", "pollutants", "µg/l"),
+    "Ti": ("titan", "Titan", "pollutants", "µg/l"),
+    "Cu": ("kupfer", "Kupfer", "trace_elements", "µg/l"),
+    "Na": ("natrium", "Natrium", "major_elements", "mg/l"),
+    "Ca": ("calcium", "Calcium", "major_elements", "mg/l"),
+    "Mg": ("magnesium", "Magnesium", "major_elements", "mg/l"),
+    "K": ("kalium", "Kalium", "major_elements", "mg/l"),
+    "Br": ("bromid", "Bromid", "major_elements", "mg/l"),
+    "B": ("bor", "Bor", "major_elements", "mg/l"),
+    "Sr": ("strontium", "Strontium", "major_elements", "mg/l"),
+    # TRITON reports elemental sulfur. Keep this separate from Oceamo sulfate,
+    # but share it with the existing Fauna Marin / ATI elemental-sulfur key.
+    "S": ("schwefel", "Schwefel", "major_elements", "mg/l"),
+    "Li": ("lithium", "Lithium", "trace_elements", "µg/l"),
+    "Ni": ("nickel", "Nickel", "trace_elements", "µg/l"),
+    "Mo": ("molybdaen", "Molybdän", "trace_elements", "µg/l"),
+    "V": ("vanadium", "Vanadium", "trace_elements", "µg/l"),
+    "Zn": ("zink", "Zink", "trace_elements", "µg/l"),
+    "Mn": ("mangan", "Mangan", "trace_elements", "µg/l"),
+    "I": ("iod", "Iod", "trace_elements", "µg/l"),
+    "Cr": ("chrom", "Chrom", "trace_elements", "µg/l"),
+    "Co": ("cobalt", "Cobalt", "trace_elements", "µg/l"),
+    "Fe": ("eisen", "Eisen", "trace_elements", "µg/l"),
+    "Ba": ("barium", "Barium", "trace_elements", "µg/l"),
+    "Si": ("silicium", "Silicium", "nutrients", "µg/l"),
+    "P": ("gesamtphosphor_icp", "Gesamtphosphor (ICP)", "nutrients", "µg/l"),
+    "PO4": ("phosphat", "Phosphat", "nutrients", "mg/l"),
+}
+
+_TRITON_LEGACY_CATEGORY_HEADINGS = {
+    "ungewünschte schwermetalle": "pollutants",
+    "ungewuenschte schwermetalle": "pollutants",
+    "macro-elemente": "major_elements",
+    "makro-elemente": "major_elements",
+    "li-gruppe": "trace_elements",
+    "i-gruppe": "trace_elements",
+    "fe-gruppe": "trace_elements",
+    "ba-gruppe": "trace_elements",
+    "si-gruppe": "nutrients",
+    "nährstoff-gruppe": "nutrients",
+    "naehrstoff-gruppe": "nutrients",
+}
+
+_TRITON_LEGACY_ROW_RE = re.compile(
+    r"^(?P<symbol>PO4|[A-Z][a-z]?)\s+"
+    r"(?P<value>-?\d+(?:[.,]\d+)?)\s+"
+    r"(?P<unit>mg/[lL]|µg/[lL]|μg/[lL]|ug/[lL])\s+"
+    r"(?P<target>-?\d+(?:[.,]\d+)?)\s+"
+    r"(?P<target_unit>mg/[lL]|µg/[lL]|μg/[lL]|ug/[lL])\s+"
+    r"(?P<deviation>-?\d+(?:[.,]\d+)?)\s+"
+    r"(?P<volume>\d+(?:[.,]\d+)?)\s+"
+    r"(?P<one_time>\d+(?:[.,]\d+)?)\s+"
+    r"(?P<daily>\d+(?:[.,]\d+)?)$"
+)
+
+_TRITON_LEGACY_STATUS_COLORS: tuple[
+    tuple[tuple[float, float, float], str], ...
+] = (
+    ((0.000, 0.769, 0.153), "ok"),
+    ((0.890, 0.878, 0.196), "warning"),
+    ((0.890, 0.196, 0.196), "critical"),
+)
 
 
 # ATI's current laboratory PDF format is laid out as small blocks rather than
@@ -1127,6 +1212,298 @@ def parse_fauna_marin_pdf(path: str | Path) -> dict[str, Any]:
 
 
 
+
+def _normalize_triton_unit(unit: str) -> str:
+    """Normalize legacy TRITON concentration units."""
+    value = unit.replace("μ", "µ").replace("ug", "µg").replace("/L", "/l")
+    return value
+
+
+def _triton_unit_factor(source_unit: str, target_unit: str) -> float | None:
+    """Return a concentration conversion factor for legacy TRITON rows."""
+    if source_unit == target_unit:
+        return 1.0
+    factors = {
+        ("mg/l", "µg/l"): 1000.0,
+        ("µg/l", "mg/l"): 0.001,
+    }
+    return factors.get((source_unit, target_unit))
+
+
+def _triton_legacy_status_sequence(
+    page: Any, reader: PdfReader
+) -> list[dict[str, str | None]]:
+    """Read legacy TRITON traffic-light rectangles in drawing order."""
+    try:
+        content = ContentStream(page.get_contents(), reader)
+    except Exception:  # noqa: BLE001
+        return []
+
+    fill: tuple[float, float, float] | None = None
+    statuses: list[dict[str, str | None]] = []
+
+    for operands, operator in content.operations:
+        if operator == b"rg" and len(operands) >= 3:
+            fill = tuple(float(value) for value in operands[:3])
+            continue
+        if operator != b"re" or fill is None or len(operands) < 4:
+            continue
+
+        _x, _y, width, height = (float(value) for value in operands[:4])
+
+        # In the tested 2014 FPDF layout each warning light is a 17.01 x 8.50
+        # point rectangle. Restricting the geometry prevents ordinary table
+        # backgrounds from being interpreted as status lights.
+        if abs(abs(width) - 17.01) > 0.25 or abs(abs(height) - 8.50) > 0.25:
+            continue
+
+        for reference, severity in _TRITON_LEGACY_STATUS_COLORS:
+            if all(abs(fill[index] - reference[index]) <= 0.02 for index in range(3)):
+                statuses.append({"severity": severity, "direction": None})
+                break
+
+    return statuses
+
+
+def _triton_status_with_direction(
+    status: dict[str, str | None] | None,
+    deviation: float,
+) -> dict[str, str | None]:
+    """Add high/low direction to a TRITON warning-light severity."""
+    if status is None:
+        return {"severity": "unknown", "direction": None}
+
+    severity = status.get("severity") or "unknown"
+    if severity == "ok":
+        return {"severity": "ok", "direction": None}
+
+    direction: str | None
+    if deviation > 0:
+        direction = "high"
+    elif deviation < 0:
+        direction = "low"
+    else:
+        direction = None
+
+    return {"severity": severity, "direction": direction}
+
+
+def _extract_triton_legacy_date(
+    path: Path, reader: PdfReader, text: str
+) -> tuple[str | None, str | None]:
+    """Find the best available date for a legacy TRITON report.
+
+    The tested 2014 PDF does not print a report date in its table. Prefer a
+    YYYYMMDD date embedded in the filename (as distributed/archived), then a
+    date printed in the document if a close variant includes one, and finally
+    the PDF CreationDate metadata.
+    """
+    filename_match = re.search(r"(?<!\d)((?:19|20)\d{6})(?!\d)", path.name)
+    if filename_match:
+        try:
+            return (
+                datetime.strptime(filename_match.group(1), "%Y%m%d")
+                .date()
+                .isoformat(),
+                "filename",
+            )
+        except ValueError:
+            pass
+
+    text_match = re.search(
+        r"\b(\d{2}[./]\d{2}[./]\d{4}|\d{4}-\d{2}-\d{2})\b",
+        text,
+    )
+    if text_match:
+        value = text_match.group(1)
+        try:
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+                parsed = datetime.strptime(value, "%Y-%m-%d").date()
+            else:
+                parsed = datetime.strptime(value.replace("/", "."), "%d.%m.%Y").date()
+            return parsed.isoformat(), "document"
+        except ValueError:
+            pass
+
+    metadata = reader.metadata or {}
+    creation = str(metadata.get("/CreationDate") or "")
+    creation_match = re.search(r"D:(\d{8})", creation)
+    if creation_match:
+        try:
+            return (
+                datetime.strptime(creation_match.group(1), "%Y%m%d")
+                .date()
+                .isoformat(),
+                "pdf_metadata",
+            )
+        except ValueError:
+            pass
+
+    return None, None
+
+
+def _triton_legacy_report_id(text: str) -> str:
+    """Create a stable provider-local ID when the old PDF has no printed ID."""
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+    return f"legacy-{digest}"
+
+
+def _parse_triton_legacy_measurement(
+    line: str,
+    status: dict[str, str | None] | None,
+) -> dict[str, Any] | None:
+    """Normalize one legacy TRITON table row."""
+    match = _TRITON_LEGACY_ROW_RE.match(" ".join(line.split()))
+    if not match:
+        return None
+
+    symbol = match.group("symbol")
+    analyte = _TRITON_LEGACY_ANALYTES.get(symbol)
+    if analyte is None:
+        return None
+
+    key, name, category, canonical_unit = analyte
+    source_unit = _normalize_triton_unit(match.group("unit"))
+    target_source_unit = _normalize_triton_unit(match.group("target_unit"))
+    factor = _triton_unit_factor(source_unit, canonical_unit)
+    target_factor = _triton_unit_factor(target_source_unit, canonical_unit)
+    if factor is None or target_factor is None:
+        return None
+
+    source_value = _decimal(match.group("value"))
+    source_target = _decimal(match.group("target"))
+    value = source_value * factor
+    target_value = source_target * target_factor
+    deviation = _decimal(match.group("deviation")) * factor
+    aquarium_volume_l = _decimal(match.group("volume"))
+    one_time_ml = _decimal(match.group("one_time"))
+    daily_ml = _decimal(match.group("daily"))
+
+    measurement: dict[str, Any] = {
+        "key": key,
+        "name": name,
+        "source_name": symbol,
+        "source_symbol": symbol,
+        "category": category,
+        "raw_value": _normalized_number(value),
+        "source_raw_value": match.group("value"),
+        "unit": canonical_unit,
+        "source_unit": source_unit,
+        "target": {"type": "exact", "value": target_value},
+        "value": value,
+        "detected": True,
+        "determined": True,
+        "status": _triton_status_with_direction(status, deviation),
+        "provider": PROVIDER_TRITON,
+        "provider_name": PROVIDER_NAMES[PROVIDER_TRITON],
+        "source_deviation": deviation,
+        "aquarium_volume_l": aquarium_volume_l,
+    }
+
+    if one_time_ml > 0 or daily_ml > 0:
+        measurement["recommendation"] = {
+            "type": "dose",
+            "one_time_ml": one_time_ml,
+            "daily_ml": daily_ml,
+            "aquarium_volume_l": aquarium_volume_l,
+        }
+
+    return measurement
+
+
+def parse_triton_legacy_pdf(path: str | Path) -> dict[str, Any]:
+    """Parse the tested legacy TRITON ICP-OES table format."""
+    source_path = Path(path)
+    try:
+        reader = PdfReader(str(source_path))
+    except Exception as err:  # noqa: BLE001
+        raise IcpParseError("The uploaded file is not a readable PDF.") from err
+
+    if not reader.pages:
+        raise IcpParseError("The PDF contains no pages.")
+
+    page_texts = [(page.extract_text() or "") for page in reader.pages]
+    full_text = "\n".join(page_texts)
+    normalized = " ".join(full_text.split()).casefold()
+
+    required_markers = (
+        "auswertung (icp-oes)",
+        "warnampel",
+        "einmalige dosierung / ml",
+        "www.triton-lab.de",
+    )
+    if not all(marker in normalized for marker in required_markers):
+        raise IcpParseError(
+            "The PDF does not look like the supported legacy TRITON ICP-OES report."
+        )
+
+    measurements: list[dict[str, Any]] = []
+    volumes: list[float] = []
+
+    for page, page_text in zip(reader.pages, page_texts, strict=True):
+        statuses = _triton_legacy_status_sequence(page, reader)
+        status_index = 0
+
+        for raw_line in page_text.splitlines():
+            line = " ".join(raw_line.split())
+            if not line:
+                continue
+
+            if line.casefold() in _TRITON_LEGACY_CATEGORY_HEADINGS:
+                continue
+
+            row_match = _TRITON_LEGACY_ROW_RE.match(line)
+            if row_match is None:
+                continue
+
+            status = statuses[status_index] if status_index < len(statuses) else None
+            status_index += 1
+
+            measurement = _parse_triton_legacy_measurement(line, status)
+            if measurement is not None:
+                measurements.append(measurement)
+                volumes.append(float(measurement["aquarium_volume_l"]))
+
+    if not measurements:
+        raise IcpParseError("No TRITON ICP measurements were found in the report.")
+
+    analysis_date, date_source = _extract_triton_legacy_date(
+        source_path, reader, full_text
+    )
+    if analysis_date is None:
+        raise IcpParseError(
+            "The legacy TRITON report does not contain a usable analysis date."
+        )
+
+    provider_report_id = _triton_legacy_report_id(full_text)
+    compact_date = analysis_date.replace("-", "")
+    metadata: dict[str, Any] = {
+        "provider": PROVIDER_TRITON,
+        "provider_name": PROVIDER_NAMES[PROVIDER_TRITON],
+        "report_type": "triton_legacy_icp",
+        "analysis_date": analysis_date,
+        "analysis_date_source": date_source,
+        "analysis_number": f"TRITON-{compact_date}",
+        "provider_report_id": provider_report_id,
+    }
+
+    if volumes:
+        rounded = {round(value, 6) for value in volumes}
+        if len(rounded) == 1:
+            metadata["aquarium_volume_l"] = volumes[0]
+
+    return {
+        "schema_version": 2,
+        "provider": PROVIDER_TRITON,
+        "provider_name": PROVIDER_NAMES[PROVIDER_TRITON],
+        "report_type": "triton_legacy_icp",
+        "metadata": metadata,
+        "measurements": measurements,
+        "interpretation": None,
+        "product_recommendations": None,
+    }
+
+
 def _normalize_ati_unit(unit: str | None, fallback: str) -> str:
     """Normalize ATI unit spellings to Reef ICP's existing unit strings."""
     if not unit:
@@ -1561,6 +1938,12 @@ def detect_icp_provider(path: str | Path) -> str:
         "ideal value:",
         "barcode",
     )
+    triton_legacy_markers = (
+        "auswertung (icp-oes)",
+        "warnampel",
+        "einmalige dosierung / ml",
+        "www.triton-lab.de",
+    )
 
     matches: list[str] = []
     if oceamo_brand and oceamo_report_marker and oceamo_id_marker:
@@ -1571,6 +1954,8 @@ def detect_icp_provider(path: str | Path) -> str:
         marker in normalized for marker in ati_english_markers
     ):
         matches.append(PROVIDER_ATI)
+    if all(marker in normalized for marker in triton_legacy_markers):
+        matches.append(PROVIDER_TRITON)
 
     if len(matches) == 1:
         return matches[0]
@@ -1595,6 +1980,8 @@ def parse_icp_pdf(path: str | Path) -> dict[str, Any]:
         return parse_fauna_marin_pdf(path)
     if provider == PROVIDER_ATI:
         return parse_ati_pdf(path)
+    if provider == PROVIDER_TRITON:
+        return parse_triton_legacy_pdf(path)
 
     # Kept as a defensive guard for future detector additions.
     raise UnsupportedIcpProviderError(f"Unsupported ICP provider: {provider}")
