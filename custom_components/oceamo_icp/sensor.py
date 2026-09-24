@@ -23,7 +23,10 @@ def _reports(entry: ConfigEntry) -> list[dict[str, Any]]:
 
 def _latest_report(entry: ConfigEntry) -> dict[str, Any]:
     reports = _reports(entry)
-    return max(reports, key=lambda item: item.get("metadata", {}).get("analysis_date", ""))
+    return max(
+        reports,
+        key=lambda item: item.get("metadata", {}).get("analysis_date", ""),
+    )
 
 
 def _stored_report_summary(entry: ConfigEntry) -> list[dict[str, Any]]:
@@ -100,6 +103,7 @@ async def async_setup_entry(
 
 class OceamoBaseSensor(SensorEntity):
     _attr_has_entity_name = True
+    _attr_should_poll = False
 
     def __init__(self, entry: ConfigEntry, report: dict[str, Any]) -> None:
         self._entry = entry
@@ -177,19 +181,12 @@ class OceamoAnalysisNumberSensor(OceamoBaseSensor):
     def __init__(self, entry: ConfigEntry, report: dict[str, Any]) -> None:
         super().__init__(entry, report)
         self._attr_unique_id = f"{entry.entry_id}_analysis_number"
-
-    @property
-    @override
-    def native_value(self) -> StateType:
-        return self._report.get("metadata", {}).get("analysis_number")
-
-    @property
-    @override
-    def extra_state_attributes(self) -> dict[str, Any]:
-        return {
-            "analysis_date": self._report.get("metadata", {}).get("analysis_date"),
-            "sample_taken": self._report.get("metadata", {}).get("sample_taken"),
-            "tank_type": self._report.get("metadata", {}).get("tank_type"),
+        metadata = report.get("metadata", {})
+        self._attr_native_value = metadata.get("analysis_number")
+        self._attr_extra_state_attributes = {
+            "analysis_date": metadata.get("analysis_date"),
+            "sample_taken": metadata.get("sample_taken"),
+            "tank_type": metadata.get("tank_type"),
         }
 
 
