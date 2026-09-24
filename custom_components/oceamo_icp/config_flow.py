@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+import shutil
+import tempfile
 from typing import Any, override
 
 import probatio
@@ -15,6 +18,8 @@ from homeassistant.config_entries import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.selector import (
+    DateSelector,
+    DateSelectorConfig,
     FileSelector,
     FileSelectorConfig,
     TextSelector,
@@ -31,24 +36,117 @@ from .const import (
 )
 from .parser import (
     IcpParseError,
+    PROVIDER_NAMES,
     UnsupportedIcpProviderError,
+    detect_icp_provider,
     parse_icp_pdf,
 )
 
+CONF_ANALYSIS_DATE = "analysis_date"
 CONF_PDF_FILE = "pdf_file"
+
+_MISSING_ANALYSIS_DATE_TEXT = "does not contain a usable analysis date"
+
+
+class MissingAnalysisDateError(Exception):
+    """Raised when a supported report needs a manually selected date."""
+
+    def __init__(self, pending_pdf_path: str, provider: str) -> None:
+        super().__init__("The ICP report needs a manually selected analysis date.")
+        self.pending_pdf_path = pending_pdf_path
+        self.provider = provider
+
+
+def _cleanup_pending_pdf(pending_pdf_path: str | None) -> None:
+    """Remove a preserved temporary PDF and its private temp directory."""
+    if not pending_pdf_path:
+        return
+    shutil.rmtree(Path(pending_pdf_path).parent, ignore_errors=True)
+
+
+def _copy_uploaded_pdf(
+    hass: HomeAssistant,
+    uploaded_file_id: str,
+) -> Path:
+    """Preserve an uploaded PDF after Home Assistant removes the upload temp dir."""
+    temp_dir = Path(tempfile.mkdtemp(prefix="reef_icp_"))
+    try:
+        with process_uploaded_file(hass, uploaded_file_id) as file_path:
+            source_path = Path(file_path)
+            filename = source_path.name or "icp-report.pdf"
+            preserved_path = temp_dir / filename
+            shutil.copy2(source_path, preserved_path)
+        return preserved_path
+    except Exception:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        raise
 
 
 def _parse_uploaded_pdf(
     hass: HomeAssistant,
     uploaded_file_id: str,
 ) -> dict[str, Any]:
-    """Parse a Home Assistant uploaded ICP PDF with provider auto-detection.
+    """Parse an uploaded ICP PDF and preserve it only when a date is missing."""
+    preserved_path = _copy_uploaded_pdf(hass, uploaded_file_id)
 
-    This wrapper is intentionally synchronous because Home Assistant requires
-    process_uploaded_file() and its teardown to run in the executor thread.
-    """
-    with process_uploaded_file(hass, uploaded_file_id) as file_path:
-        return parse_icp_pdf(file_path)
+    try:
+        provider = detect_icp_provider(preserved_path)
+        report = parse_icp_pdf(preserved_path)
+    except UnsupportedIcpProviderError:
+        _cleanup_pending_pdf(str(preserved_path))
+        raise
+    except IcpParseError as err:
+        if _MISSING_ANALYSIS_DATE_TEXT in str(err).casefold():
+            raise MissingAnalysisDateError(str(preserved_path), provider) from err
+        _cleanup_pending_pdf(str(preserved_path))
+        raise
+    except Exception:
+        _cleanup_pending_pdf(str(preserved_path))
+        raise
+
+    _cleanup_pending_pdf(str(preserved_path))
+    return report
+
+
+def _normalize_selected_date(value: Any) -> str:
+    """Return a Home Assistant date-selector value as YYYY-MM-DD."""
+    if hasattr(value, "isoformat"):
+        value = value.isoformat()
+    date_value = str(value).strip()
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_value):
+        raise ValueError("Invalid analysis date.")
+    return date_value
+
+
+def _parse_pending_pdf_with_date(
+    pending_pdf_path: str,
+    selected_date: Any,
+) -> dict[str, Any]:
+    """Reparse a preserved report with a user-selected date in its temp filename."""
+    source_path = Path(pending_pdf_path)
+    if not source_path.exists():
+        raise IcpParseError("The preserved uploaded PDF is no longer available.")
+
+    date_value = _normalize_selected_date(selected_date)
+    compact_date = date_value.replace("-", "")
+    suffix = source_path.suffix if source_path.suffix else ".pdf"
+    dated_path = source_path.with_name(
+        f"{source_path.stem}_{compact_date}{suffix}"
+    )
+
+    shutil.copy2(source_path, dated_path)
+    try:
+        report = parse_icp_pdf(dated_path)
+    finally:
+        try:
+            dated_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    metadata = report.setdefault("metadata", {})
+    metadata["analysis_date"] = date_value
+    metadata["analysis_date_source"] = "manual"
+    return report
 
 
 def _report_provider(report: dict[str, Any]) -> str:
@@ -101,6 +199,10 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    _pending_pdf_path: str | None = None
+    _pending_provider: str | None = None
+    _pending_aquarium_name: str | None = None
+
     @staticmethod
     @callback
     @override
@@ -122,6 +224,13 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                     self.hass,
                     user_input[CONF_PDF_FILE],
                 )
+            except MissingAnalysisDateError as err:
+                self._pending_pdf_path = err.pending_pdf_path
+                self._pending_provider = err.provider
+                self._pending_aquarium_name = user_input[
+                    CONF_AQUARIUM_NAME
+                ].strip()
+                return await self.async_step_analysis_date()
             except UnsupportedIcpProviderError:
                 errors["base"] = "unsupported_provider"
             except IcpParseError:
@@ -153,9 +262,67 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    async def async_step_analysis_date(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for the analysis date when the uploaded report has none."""
+        errors: dict[str, str] = {}
+
+        if self._pending_pdf_path is None or self._pending_aquarium_name is None:
+            return await self.async_step_user()
+
+        if user_input is not None:
+            try:
+                report = await self.hass.async_add_executor_job(
+                    _parse_pending_pdf_with_date,
+                    self._pending_pdf_path,
+                    user_input[CONF_ANALYSIS_DATE],
+                )
+            except IcpParseError:
+                errors["base"] = "invalid_icp_pdf"
+            except (TypeError, ValueError):
+                errors["base"] = "invalid_analysis_date"
+            except Exception:  # noqa: BLE001
+                errors["base"] = "unknown"
+            else:
+                await self.hass.async_add_executor_job(
+                    _cleanup_pending_pdf,
+                    self._pending_pdf_path,
+                )
+                aquarium_name = self._pending_aquarium_name
+                self._pending_pdf_path = None
+                self._pending_provider = None
+                self._pending_aquarium_name = None
+                return self.async_create_entry(
+                    title=aquarium_name,
+                    data={CONF_AQUARIUM_NAME: aquarium_name},
+                    options={CONF_REPORTS: [report]},
+                )
+
+        schema = probatio.Schema(
+            {
+                probatio.Required(CONF_ANALYSIS_DATE): DateSelector(
+                    DateSelectorConfig()
+                ),
+            }
+        )
+        provider_name = PROVIDER_NAMES.get(
+            self._pending_provider or "",
+            self._pending_provider or "ICP",
+        )
+        return self.async_show_form(
+            step_id="analysis_date",
+            data_schema=self.add_suggested_values_to_schema(schema, user_input),
+            description_placeholders={"provider": provider_name},
+            errors=errors,
+        )
+
 
 class ReefIcpOptionsFlow(OptionsFlowWithReload):
     """Import additional ICP reports from supported providers."""
+
+    _pending_pdf_path: str | None = None
+    _pending_provider: str | None = None
 
     @override
     async def async_step_init(
@@ -171,6 +338,10 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
                     self.hass,
                     user_input[CONF_PDF_FILE],
                 )
+            except MissingAnalysisDateError as err:
+                self._pending_pdf_path = err.pending_pdf_path
+                self._pending_provider = err.provider
+                return await self.async_step_analysis_date()
             except UnsupportedIcpProviderError:
                 errors["base"] = "unsupported_provider"
             except IcpParseError:
@@ -198,5 +369,61 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
         return self.async_show_form(
             step_id="init",
             data_schema=self.add_suggested_values_to_schema(schema, user_input),
+            errors=errors,
+        )
+
+    async def async_step_analysis_date(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for a missing analysis date before storing an additional report."""
+        errors: dict[str, str] = {}
+
+        if self._pending_pdf_path is None:
+            return await self.async_step_init()
+
+        if user_input is not None:
+            try:
+                report = await self.hass.async_add_executor_job(
+                    _parse_pending_pdf_with_date,
+                    self._pending_pdf_path,
+                    user_input[CONF_ANALYSIS_DATE],
+                )
+            except IcpParseError:
+                errors["base"] = "invalid_icp_pdf"
+            except (TypeError, ValueError):
+                errors["base"] = "invalid_analysis_date"
+            except Exception:  # noqa: BLE001
+                errors["base"] = "unknown"
+            else:
+                await self.hass.async_add_executor_job(
+                    _cleanup_pending_pdf,
+                    self._pending_pdf_path,
+                )
+                self._pending_pdf_path = None
+                self._pending_provider = None
+                reports = _upsert_report(
+                    list(self.config_entry.options.get(CONF_REPORTS, [])),
+                    report,
+                )
+                return self.async_create_entry(
+                    title="",
+                    data={CONF_REPORTS: reports},
+                )
+
+        schema = probatio.Schema(
+            {
+                probatio.Required(CONF_ANALYSIS_DATE): DateSelector(
+                    DateSelectorConfig()
+                ),
+            }
+        )
+        provider_name = PROVIDER_NAMES.get(
+            self._pending_provider or "",
+            self._pending_provider or "ICP",
+        )
+        return self.async_show_form(
+            step_id="analysis_date",
+            data_schema=self.add_suggested_values_to_schema(schema, user_input),
+            description_placeholders={"provider": provider_name},
             errors=errors,
         )

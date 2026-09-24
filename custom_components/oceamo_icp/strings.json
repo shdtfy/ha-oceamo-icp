@@ -8,11 +8,19 @@
           "aquarium_name": "Aquarium name",
           "pdf_file": "ICP PDF report"
         }
+      },
+      "analysis_date": {
+        "title": "Select analysis date",
+        "description": "Reef ICP detected {provider}, but no reliable analysis date could be found in the report, filename or PDF metadata. Select the date of this analysis.",
+        "data": {
+          "analysis_date": "Analysis date"
+        }
       }
     },
     "error": {
       "unsupported_provider": "The ICP laboratory could not be detected or is not supported yet.",
       "invalid_icp_pdf": "The PDF was recognized as a supported provider but could not be parsed as a supported ICP report.",
+      "invalid_analysis_date": "Please select a valid analysis date.",
       "unknown": "An unexpected error occurred while reading the PDF."
     }
   },
@@ -24,11 +32,19 @@
         "data": {
           "pdf_file": "ICP PDF report"
         }
+      },
+      "analysis_date": {
+        "title": "Select analysis date",
+        "description": "Reef ICP detected {provider}, but no reliable analysis date could be found in the report, filename or PDF metadata. Select the date of this analysis.",
+        "data": {
+          "analysis_date": "Analysis date"
+        }
       }
     },
     "error": {
       "unsupported_provider": "The ICP laboratory could not be detected or is not supported yet.",
       "invalid_icp_pdf": "The PDF was recognized as a supported provider but could not be parsed as a supported ICP report.",
+      "invalid_analysis_date": "Please select a valid analysis date.",
       "unknown": "An unexpected error occurred while reading the PDF."
     }
   }
