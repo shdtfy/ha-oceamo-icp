@@ -8,11 +8,19 @@
           "aquarium_name": "Name des Aquariums",
           "pdf_file": "ICP-PDF-Bericht"
         }
+      },
+      "analysis_date": {
+        "title": "Analysedatum auswählen",
+        "description": "Reef ICP hat {provider} erkannt, konnte aber kein zuverlässiges Analysedatum im Bericht, Dateinamen oder in den PDF-Metadaten finden. Bitte wähle das Datum dieser Analyse aus.",
+        "data": {
+          "analysis_date": "Analysedatum"
+        }
       }
     },
     "error": {
       "unsupported_provider": "Der ICP-Anbieter konnte nicht automatisch erkannt werden oder wird noch nicht unterstützt.",
       "invalid_icp_pdf": "Der Anbieter wurde erkannt, der PDF-Bericht konnte aber nicht als unterstützte ICP-Analyse verarbeitet werden.",
+      "invalid_analysis_date": "Bitte wähle ein gültiges Analysedatum aus.",
       "unknown": "Beim Lesen der PDF ist ein unerwarteter Fehler aufgetreten."
     }
   },
@@ -24,11 +32,19 @@
         "data": {
           "pdf_file": "ICP-PDF-Bericht"
         }
+      },
+      "analysis_date": {
+        "title": "Analysedatum auswählen",
+        "description": "Reef ICP hat {provider} erkannt, konnte aber kein zuverlässiges Analysedatum im Bericht, Dateinamen oder in den PDF-Metadaten finden. Bitte wähle das Datum dieser Analyse aus.",
+        "data": {
+          "analysis_date": "Analysedatum"
+        }
       }
     },
     "error": {
       "unsupported_provider": "Der ICP-Anbieter konnte nicht automatisch erkannt werden oder wird noch nicht unterstützt.",
       "invalid_icp_pdf": "Der Anbieter wurde erkannt, der PDF-Bericht konnte aber nicht als unterstützte ICP-Analyse verarbeitet werden.",
+      "invalid_analysis_date": "Bitte wähle ein gültiges Analysedatum aus.",
       "unknown": "Beim Lesen der PDF ist ein unerwarteter Fehler aufgetreten."
     }
   }
