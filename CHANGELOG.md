@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.6.1 - Development
+
+### Fixed
+
+- Measurement entities no longer become unavailable merely because the newest provider does not include that analyte.
+- Reef ICP now keeps the newest available result for every analyte that has appeared in any stored report.
+- A current non-detect or undetermined result (`n.n.`, `n.b.`, `n.g.` or ATI `---`) still remains the current result and is never replaced by an older numeric value.
+
+### Added
+
+- Added `included_in_current_report` to measurement entities so carried-forward results are explicitly distinguishable from values measured in the newest ICP.
+- Added `last_measured_*` attributes with the provider, report ID, date, sample timestamp and report type that supplied the sensor state.
+- Added `current_*` report attributes alongside carried-forward results for clear provenance.
+- Added the new Reef ICP icon and wide project logo.
+
+### Changed
+
+- Individual measurement entities now use the union of analytes across all stored reports while the `ICP Status` entity and Reef ICP dashboard card remain strict views of the newest report.
+- Updated the bundled card cache version and integration version to `0.6.1`.
+
 ## 0.6.0 - Development
 
 ### Added

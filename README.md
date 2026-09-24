@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="custom_components/oceamo_icp/brand/logo.png"
+       alt="Reef ICP for Home Assistant"
+       width="900">
+</p>
+
 # Reef ICP for Home Assistant
 
 A custom Home Assistant integration for importing reef-aquarium ICP analysis reports from multiple laboratory providers.
@@ -91,7 +97,8 @@ If no supported provider can be identified, the import stops instead of guessing
 - Store up to 100 reports per aquarium
 - Keep reports in chronological sample order
 - Keep the newest report as the current sensor state
-- Create one sensor per parameter in the newest report
+- Keep one stable sensor per analyte seen in any stored report
+- Preserve the newest available analyte result when a later provider omits that parameter
 - Create `ICP Status`, `Analysis date` and `Analysis number` sensors
 - Preserve non-numeric laboratory states instead of converting them to zero
 - Import historic numeric values as Home Assistant external long-term statistics
@@ -108,9 +115,19 @@ For each aquarium, the integration creates:
 - `ICP Status`
 - `Analysis date`
 - `Analysis number`
-- one sensor for every measurement in the latest report
+- one stable sensor for every analyte that has appeared in any stored report
 
 `ICP Status` contains the complete normalized measurement list, provider metadata, previous-analysis comparison, stored-report summary and statistic IDs used by the bundled card.
+
+### Stable measurement entities across providers
+
+Different laboratories do not always test the same parameter set. Starting with version `0.6.1`, individual measurement entities therefore remain stable across provider changes.
+
+If the newest ICP omits an analyte entirely, the sensor keeps the newest available result from the most recent older report that actually contained that analyte. The sensor exposes `included_in_current_report: false` plus `last_measured_*` and `current_*` attributes so the source of the value remains explicit.
+
+This fallback only applies when the parameter is absent from the newest report. If the newest report contains the analyte but reports `n.n.`, `n.b.`, `n.g.` or ATI `---`, that laboratory result remains current and Reef ICP does not substitute an older numeric value.
+
+The `ICP Status` entity and Reef ICP dashboard card continue to show only measurements that are actually present in the newest report. Carried-forward values therefore never appear as fresh measurements in the main ICP card.
 
 ## Fauna Marin recommendations
 
@@ -229,6 +246,8 @@ https://github.com/shdtfy/ha-oceamo-icp
 - [x] Previous-ICP comparison
 - [x] Bundled dashboard card
 - [x] Interactive measurement history
+- [x] Stable measurement entities when providers omit analytes
+- [x] Reef ICP project branding
 - [ ] Show Oceamo interpretation / evaluation text inside the card
 - [ ] Show laboratory dosing recommendations inside the card
 - [ ] Older ATI layouts and ATI Pro / Ultimate-MS variants
