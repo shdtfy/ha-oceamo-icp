@@ -14,7 +14,13 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
-from .const import CONF_REPORTS, DOMAIN
+from .const import (
+    CONF_AQUARIUM_VOLUME_L,
+    CONF_REPORTS,
+    CONF_SUPPLY_SYSTEM,
+    DOMAIN,
+    SUPPLY_SYSTEM_NAMES,
+)
 from .statistics import statistic_id_for
 
 ANALYSIS_NUMBER_UNIQUE_ID_V1 = "_analysis_number"
@@ -24,6 +30,19 @@ ANALYSIS_NUMBER_UNIQUE_ID_V2 = "_analysis_number_v2"
 def _reports(entry: ConfigEntry) -> list[dict[str, Any]]:
     """Return all stored reports."""
     return list(entry.options.get(CONF_REPORTS, []))
+
+
+def _aquarium_profile(entry: ConfigEntry) -> dict[str, Any]:
+    """Return persistent aquarium settings used across all ICP providers."""
+    volume = entry.options.get(CONF_AQUARIUM_VOLUME_L)
+    system = entry.options.get(CONF_SUPPLY_SYSTEM)
+    return {
+        "aquarium_volume_l": volume,
+        "supply_system": system,
+        "supply_system_name": SUPPLY_SYSTEM_NAMES.get(str(system), str(system))
+        if system
+        else None,
+    }
 
 
 def _report_sort_key(report: dict[str, Any]) -> str:
@@ -418,7 +437,10 @@ class OceamoReportSensor(OceamoBaseSensor):
             else {}
         )
 
+        profile = _aquarium_profile(self._entry)
+
         return {
+            **profile,
             "analysis_number": metadata.get("analysis_number"),
             "analysis_date": metadata.get("analysis_date"),
             "sample_taken": metadata.get("sample_taken"),

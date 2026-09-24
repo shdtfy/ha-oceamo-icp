@@ -3,9 +3,11 @@
     "step": {
       "user": {
         "title": "Reef ICP",
-        "description": "Create an aquarium and upload the first ICP PDF. Reef ICP detects the supported laboratory automatically.",
+        "description": "Create an aquarium profile, choose its net water volume and dosing system, then upload the first ICP PDF. The laboratory is detected automatically.",
         "data": {
           "aquarium_name": "Aquarium name",
+          "aquarium_volume_l": "Net water volume",
+          "supply_system": "Dosing / supply system",
           "pdf_file": "ICP PDF report"
         }
       },
@@ -21,23 +23,39 @@
       "unsupported_provider": "The ICP laboratory could not be detected or is not supported yet.",
       "invalid_icp_pdf": "The PDF was recognized as a supported provider but could not be parsed as a supported ICP report.",
       "invalid_analysis_date": "Please select a valid analysis date.",
-      "unknown": "An unexpected error occurred while reading the PDF."
+      "unknown": "An unexpected error occurred while reading the PDF.",
+      "invalid_aquarium_profile": "Enter a valid aquarium name, a net water volume greater than 0 L and a dosing system."
     }
   },
   "options": {
     "step": {
       "init": {
+        "title": "Reef ICP",
+        "menu_options": {
+          "import_icp": "Import another ICP analysis",
+          "aquarium_settings": "Aquarium settings"
+        }
+      },
+      "analysis_date": {
+        "title": "Select analysis date",
+        "description": "Reef ICP detected {provider}, but no trustworthy analysis date could be found in the report or filename. Select the date of this analysis.",
+        "data": {
+          "analysis_date": "Analysis date"
+        }
+      },
+      "import_icp": {
         "title": "Import another ICP analysis",
         "description": "Upload another ICP PDF. Reef ICP detects the provider automatically. Existing reports with the same provider and report ID are replaced.",
         "data": {
           "pdf_file": "ICP PDF report"
         }
       },
-      "analysis_date": {
-        "title": "Select analysis date",
-        "description": "Reef ICP detected {provider}, but no trustworthy analysis date could be found in the report or filename. Select the date of this analysis.",
+      "aquarium_settings": {
+        "title": "Aquarium settings",
+        "description": "Set the aquarium's net water volume and permanent dosing/supply system. These settings are independent of the laboratory that performs an ICP. Choose a preset or enter a custom system.",
         "data": {
-          "analysis_date": "Analysis date"
+          "aquarium_volume_l": "Net water volume",
+          "supply_system": "Dosing / supply system"
         }
       }
     },
@@ -45,7 +63,8 @@
       "unsupported_provider": "The ICP laboratory could not be detected or is not supported yet.",
       "invalid_icp_pdf": "The PDF was recognized as a supported provider but could not be parsed as a supported ICP report.",
       "invalid_analysis_date": "Please select a valid analysis date.",
-      "unknown": "An unexpected error occurred while reading the PDF."
+      "unknown": "An unexpected error occurred while reading the PDF.",
+      "invalid_aquarium_profile": "Enter a net water volume greater than 0 L and a dosing system."
     }
   }
 }
