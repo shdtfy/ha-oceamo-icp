@@ -291,7 +291,7 @@ _FAUNA_ANALYTES: dict[str, tuple[str, str, str, str, float]] = {
 
 
 
-# Tested legacy TRITON ICP-OES PDF layout (2014 generation).
+# Tested legacy TRITON ICP-OES PDF layouts (2014/2015 generation).
 #
 # The PDF contains compact tabular rows with:
 # element, analysis value, set point, deviation, a coloured warning light,
@@ -333,6 +333,9 @@ _TRITON_LEGACY_ANALYTES: dict[str, tuple[str, str, str, str]] = {
     "Co": ("cobalt", "Cobalt", "trace_elements", "µg/l"),
     "Fe": ("eisen", "Eisen", "trace_elements", "µg/l"),
     "Ba": ("barium", "Barium", "trace_elements", "µg/l"),
+    # Present in the tested 2015 layout. Keep the shared Reef ICP category/key
+    # used by Fauna Marin and ATI so cross-provider history remains compatible.
+    "Be": ("beryllium", "Beryllium", "pollutants", "µg/l"),
     "Si": ("silicium", "Silicium", "nutrients", "µg/l"),
     "P": ("gesamtphosphor_icp", "Gesamtphosphor (ICP)", "nutrients", "µg/l"),
     "PO4": ("phosphat", "Phosphat", "nutrients", "mg/l"),
@@ -360,8 +363,8 @@ _TRITON_LEGACY_ROW_RE = re.compile(
     r"(?P<target_unit>mg/[lL]|µg/[lL]|μg/[lL]|ug/[lL])\s+"
     r"(?P<deviation>-?\d+(?:[.,]\d+)?)\s+"
     r"(?P<volume>\d+(?:[.,]\d+)?)\s+"
-    r"(?P<one_time>\d+(?:[.,]\d+)?)\s+"
-    r"(?P<daily>\d+(?:[.,]\d+)?)$"
+    r"(?P<one_time>\d+(?:[.,]\d+)?)(?:\s*mL)?\s+"
+    r"(?P<daily>\d+(?:[.,]\d+)?)(?:\s*mL)?$"
 )
 
 _TRITON_LEGACY_STATUS_COLORS: tuple[
@@ -1342,10 +1345,41 @@ def _extract_triton_legacy_date(
     return None, None
 
 
+def _triton_legacy_printed_id(text: str) -> str | None:
+    """Return a printed legacy TRITON report ID when the layout provides one."""
+    match = re.search(
+        r"Auswertung\s*\(ICP-OES\)\s*\((?P<report_id>[A-Za-z0-9-]+)\)",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return None
+    return match.group("report_id").strip() or None
+
+
 def _triton_legacy_report_id(text: str) -> str:
-    """Create a stable provider-local ID when the old PDF has no printed ID."""
+    """Return a provider-local ID, preferring the ID printed in the PDF."""
+    if printed_id := _triton_legacy_printed_id(text):
+        return printed_id
     digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
     return f"legacy-{digest}"
+
+
+def _is_triton_legacy_layout(normalized_text: str) -> bool:
+    """Recognize the tested 2014/2015 TRITON legacy table variants."""
+    common_markers = (
+        "auswertung (icp-oes)",
+        "warnampel",
+        "www.triton-lab.de",
+    )
+    if not all(marker in normalized_text for marker in common_markers):
+        return False
+
+    dosing_header = (
+        "einmalige dosierung / ml" in normalized_text
+        or "korrektur dosierung / ml" in normalized_text
+    )
+    return dosing_header
 
 
 def _parse_triton_legacy_measurement(
@@ -1426,15 +1460,9 @@ def parse_triton_legacy_pdf(path: str | Path) -> dict[str, Any]:
     full_text = "\n".join(page_texts)
     normalized = " ".join(full_text.split()).casefold()
 
-    required_markers = (
-        "auswertung (icp-oes)",
-        "warnampel",
-        "einmalige dosierung / ml",
-        "www.triton-lab.de",
-    )
-    if not all(marker in normalized for marker in required_markers):
+    if not _is_triton_legacy_layout(normalized):
         raise IcpParseError(
-            "The PDF does not look like the supported legacy TRITON ICP-OES report."
+            "The PDF does not look like a supported legacy TRITON ICP-OES report."
         )
 
     measurements: list[dict[str, Any]] = []
@@ -1448,6 +1476,12 @@ def parse_triton_legacy_pdf(path: str | Path) -> dict[str, Any]:
             line = " ".join(raw_line.split())
             if not line:
                 continue
+
+            # In the tested 2015 export, the unit label from the dosing header
+            # is glued to the first analyte of each table (for example
+            # ``mLHg`` or ``mLNa``). Remove only that very specific prefix so
+            # the first row is parsed instead of silently dropped.
+            line = re.sub(r"^mL(?=(?:PO4|[A-Z][a-z]?)\s)", "", line)
 
             if line.casefold() in _TRITON_LEGACY_CATEGORY_HEADINGS:
                 continue
@@ -1475,16 +1509,23 @@ def parse_triton_legacy_pdf(path: str | Path) -> dict[str, Any]:
             "The legacy TRITON report does not contain a usable analysis date."
         )
 
+    printed_id = _triton_legacy_printed_id(full_text)
     provider_report_id = _triton_legacy_report_id(full_text)
     compact_date = analysis_date.replace("-", "")
+    if "korrektur dosierung / ml" in normalized:
+        layout_variant = "correction_maintenance"
+    else:
+        layout_variant = "one_time_daily"
+
     metadata: dict[str, Any] = {
         "provider": PROVIDER_TRITON,
         "provider_name": PROVIDER_NAMES[PROVIDER_TRITON],
         "report_type": "triton_legacy_icp",
         "analysis_date": analysis_date,
         "analysis_date_source": date_source,
-        "analysis_number": f"TRITON-{compact_date}",
+        "analysis_number": printed_id or f"TRITON-{compact_date}",
         "provider_report_id": provider_report_id,
+        "legacy_layout_variant": layout_variant,
     }
 
     if volumes:
@@ -1938,12 +1979,7 @@ def detect_icp_provider(path: str | Path) -> str:
         "ideal value:",
         "barcode",
     )
-    triton_legacy_markers = (
-        "auswertung (icp-oes)",
-        "warnampel",
-        "einmalige dosierung / ml",
-        "www.triton-lab.de",
-    )
+    triton_legacy_layout = _is_triton_legacy_layout(normalized)
 
     matches: list[str] = []
     if oceamo_brand and oceamo_report_marker and oceamo_id_marker:
@@ -1954,7 +1990,7 @@ def detect_icp_provider(path: str | Path) -> str:
         marker in normalized for marker in ati_english_markers
     ):
         matches.append(PROVIDER_ATI)
-    if all(marker in normalized for marker in triton_legacy_markers):
+    if triton_legacy_layout:
         matches.append(PROVIDER_TRITON)
 
     if len(matches) == 1:
