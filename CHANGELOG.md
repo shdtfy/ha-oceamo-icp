@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.3 - Development
+
+### Fixed
+
+- Made all PDF-backed Oceamo sensors explicitly non-polling.
+- Simplified the `Analysis number` sensor to publish its string value and attributes directly during entity creation.
+- Intended to prevent the analysis-number entity from becoming unavailable after initial setup/reload.
+
 ## 0.2.2 - Development
 
 ### Added
