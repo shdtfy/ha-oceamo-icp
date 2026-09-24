@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 - Development
+
+### Fixed
+
+- Fixed invalid external statistic IDs on Home Assistant installations using uppercase config-entry IDs.
+- Statistic IDs are now normalized to lowercase Home Assistant-compatible slugs before import.
+
 ## 0.2.0 - Development
 
 ### Added
