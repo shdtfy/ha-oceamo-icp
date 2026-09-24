@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.8.2 - Development
+
+### Added
+
+- Generalized the missing-analysis-date fallback so it applies to **all supported providers**, not only legacy TRITON.
+- Added a shared parser-level `MissingAnalysisDateError` and a provider-independent date resolver.
+- Added common filename-date recognition for `YYYYMMDD`, `YYYY-MM-DD`, `YYYY_MM_DD`, `DD.MM.YYYY`, `DD-MM-YYYY` and `DD_MM_YYYY`.
+- The manual Home Assistant date selector now reparses the original preserved PDF with an explicit date override instead of temporarily renaming the PDF.
+
+### Changed
+
+- Reef ICP now uses the same trusted date priority for every provider: report date → parsed sample date → filename date → manual selection.
+- PDF `CreationDate` metadata is deliberately ignored because it can represent PDF export time rather than the laboratory analysis date.
+- Updated the integration version to `0.8.2`.
+- Updated German and English config-flow text and README documentation for the provider-independent date handling.
+
+### Fixed
+
+- Fixed the tested 2014 TRITON PDF being silently dated `2014-10-18` from its PDF creation metadata even though the actual archived analysis date was `2014-09-25`.
+- A supported report without any trustworthy date now reliably reaches the manual date-selection step.
+
+
 ## 0.8.1 - Development
 
 ### Added

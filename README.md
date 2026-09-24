@@ -137,8 +137,10 @@ The ATI parser has been developed against a real public current-format ATI repor
 - Supports both `Einmalige / Tägliche Dosierung` and `Korrektur / Erhaltungs Dosierung` layouts
 - Normalizes comparable analytes into the shared Reef ICP history
 - Uses the printed TRITON report ID when present (for example `296B`); otherwise generates a stable provider-local ID
-- Uses a date embedded in the PDF filename when available; otherwise falls back to a document date or PDF creation metadata
-- If a supported report still has no reliable date, the Home Assistant import flow asks for the analysis date instead of rejecting the PDF
+- Uses a trustworthy date from the report itself when available
+- Can fall back to a parsed sample date or a plausible date embedded in the PDF filename
+- Deliberately ignores PDF `CreationDate` metadata because it can represent the export time rather than the laboratory analysis date
+- If no trustworthy date remains, the Home Assistant import flow asks for the analysis date instead of rejecting the PDF
 
 The currently supported TRITON family is explicitly treated as `triton_legacy_icp`. It has been tested against two real two-page German TRITON ICP-OES reports from 2014 and 2015. Current TRITON reports may use a different layout and remain a separate compatibility target until a representative modern result is available.
 
@@ -182,7 +184,20 @@ Currently detected automatically:
 - ATI
 - TRITON (tested legacy ICP-OES format)
 
-If no supported provider can be identified, the import stops instead of guessing. If the provider/report is supported but no reliable analysis date can be found, Reef ICP opens a second step with a native Home Assistant date selector. A report is replaced only when both its provider and provider report ID match an already stored report.
+If no supported provider can be identified, the import stops instead of guessing. Date handling is provider-independent: Reef ICP first uses a date parsed from the report, then a parsed sample date or a plausible filename date. PDF `CreationDate` metadata is not treated as an analysis date. If no trustworthy date remains, Reef ICP opens a second step with a native Home Assistant date selector. A report is replaced only when both its provider and provider report ID match an already stored report.
+
+## Analysis date handling
+
+Reef ICP applies the same date rules to every supported laboratory:
+
+1. Use the provider-specific analysis/report date when it is present in the PDF.
+2. If the report has no separate analysis date but does contain a parsed sample timestamp, use that sample date as the chronological report date.
+3. Otherwise, use a plausible calendar date embedded in the original PDF filename.
+4. If none of those sources is available, Home Assistant asks you to select the date manually.
+
+PDF `CreationDate` metadata is deliberately ignored. It describes when a PDF file was created or exported and is not guaranteed to match the laboratory analysis or sampling date.
+
+A manually selected date is stored with `analysis_date_source: manual`.
 
 ## What it currently does
 
@@ -350,7 +365,7 @@ https://github.com/shdtfy/ha-oceamo-icp
 - [ ] Older ATI layouts and ATI Pro / Ultimate-MS variants
 - [x] Oceamo Reef ICP-MS / current ICP-MS report layout
 - [x] TRITON legacy ICP-OES (tested 2014 + 2015 layouts)
-- [x] Manual analysis-date fallback for supported reports without a detectable date
+- [x] Provider-independent analysis-date fallback with manual Home Assistant date selector
 - [ ] Current TRITON ICP-OES report layout
 - [ ] Reef Factory Smart ICP-OES
 - [ ] Additional newer Oceamo report variants if the PDF layout changes
