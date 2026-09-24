@@ -126,11 +126,25 @@ The Fauna Marin parser has been tested against four real reports from 2022.
 
 The ATI parser has been developed against a real public current-format ATI report from 2026 (analysis ID **372482**). Older ATI layouts and the newer Pro / Ultimate-MS variants remain separate compatibility targets until representative PDFs are available.
 
+### TRITON
+
+- Tested legacy TRITON ICP-OES PDF table format from 2014
+- Automatic recognition using the legacy TRITON report fingerprints
+- 32 analytes in the available real-world test report
+- Set points, deviations and aquarium volume
+- Reads the green / yellow / red **Warnampel** directly from the PDF drawing stream
+- Preserves TRITON one-time and daily dosing recommendations per analyte
+- Normalizes comparable analytes into the shared Reef ICP history
+- Uses a stable generated provider report ID because this legacy PDF layout does not print an analysis ID
+- Uses a date embedded in the PDF filename when available; otherwise falls back to a document date or PDF creation metadata
+
+The currently supported TRITON format is explicitly treated as `triton_legacy_icp`. It is based on a real two-page German TRITON ICP-OES report from 2014. Current TRITON reports may use a different layout and remain a separate compatibility target until a representative modern result is available.
+
 ## Provider and report type
 
 Reef ICP stores the laboratory provider separately from a report-type hint. This prepares the integration for different analysis products from the same laboratory, for example classic Oceamo ICP versus **Oceamo Reef ICP-MS**, without treating them as different providers.
 
-Current report-type hints include `classic_icp`, `reef_icp_ms`, `reef_icp` and `ati_icp`. Future parsers can add further types such as ATI Ultimate-MS while keeping the same provider-neutral history model.
+Current report-type hints include `classic_icp`, `reef_icp_ms`, `reef_icp`, `ati_icp` and `triton_legacy_icp`. Future parsers can add further types such as ATI Ultimate-MS while keeping the same provider-neutral history model.
 
 ## Multi-provider history
 
@@ -164,6 +178,7 @@ Currently detected automatically:
 - Oceamo
 - Fauna Marin
 - ATI
+- TRITON (tested legacy ICP-OES format)
 
 If no supported provider can be identified, the import stops instead of guessing. A report is replaced only when both its provider and provider report ID match an already stored report.
 
@@ -332,7 +347,8 @@ https://github.com/shdtfy/ha-oceamo-icp
 - [ ] Show laboratory dosing recommendations inside the card
 - [ ] Older ATI layouts and ATI Pro / Ultimate-MS variants
 - [x] Oceamo Reef ICP-MS / current ICP-MS report layout
-- [ ] TRITON ICP-OES
+- [x] TRITON legacy ICP-OES (2014 report layout)
+- [ ] Current TRITON ICP-OES report layout
 - [ ] Reef Factory Smart ICP-OES
 - [ ] Additional newer Oceamo report variants if the PDF layout changes
 - [ ] Additional ICP laboratories
@@ -348,7 +364,7 @@ Private test reports are not included in the public repository.
 
 ## Disclaimer
 
-Reef ICP is an independent community project and is not affiliated with or endorsed by Oceamo, Fauna Marin, ATI or any other ICP laboratory.
+Reef ICP is an independent community project and is not affiliated with or endorsed by Oceamo, Fauna Marin, ATI, TRITON or any other ICP laboratory.
 
 Laboratory reference ranges and recommendations are imported from the supplied reports. Reef ICP does not replace professional aquarium husbandry advice.
 
