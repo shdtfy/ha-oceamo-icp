@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2 - Development
+
+### Added
+
+- Added a dedicated `Analysis number` sensor for the newest imported Oceamo report.
+- The analysis-number sensor also exposes analysis date, sample timestamp and tank type as attributes.
+
 ## 0.2.1 - Development
 
 ### Fixed
