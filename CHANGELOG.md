@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.2 - Development
+
+### Fixed
+
+- Added the alternate classic Oceamo status-icon artwork used by real report `OC186791`.
+- Reef ICP can now read the green, yellow and red Oceamo rating icons from this older classic PDF instead of falling back to `unknown` for exact-target values.
+- This fixes the report showing 15 unnecessary `Unklar` measurements even though Oceamo printed a rating icon for every row.
+
+### Tested
+
+- Regression-tested the supplied real Oceamo report `OC186791` from 22.01.2022.
+- Verified all **47 measurements** receive a provider rating: **35 OK, 8 warning, 4 critical, 0 unknown**.
+- Verified high/low direction for Bromid, Magnesium, Barium, Fluorid, Lithium, Molybdän, Aluminium, Phosphat, Gesamtphosphor, Nitrit and Silicium against the printed Oceamo artwork.
+
+
 ## 0.9.1 - Development
 
 ### Added
