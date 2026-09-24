@@ -25,7 +25,8 @@ A custom Home Assistant integration for importing Oceamo ICP analysis reports di
 - Import historic numeric ICP values as Home Assistant external long-term statistics using the original sample timestamp
 - Compare the newest ICP with the immediately previous stored ICP
 - Bundle and automatically load a dedicated **Oceamo ICP Card** for Home Assistant dashboards
-- Expose one `ICP Status` entity containing the complete latest report, status summary and comparison data for the custom card
+- Open an interactive history chart by tapping an individual ICP measurement
+- Expose one `ICP Status` entity containing the complete latest report, status summary, comparison data and statistic IDs for the custom card
 
 The parser currently targets the classic Oceamo report format used by analysis **OC188727** from 2022. Support for newer Oceamo and ICP-MS report formats will be added separately.
 
@@ -106,11 +107,29 @@ The card currently shows:
 - green / yellow / red status counts
 - previous analysis number and date
 - collapsible Oceamo categories
+- per-category green / yellow / red status summaries
 - current measurement
 - target value / target range
 - previous measurement
 - change and trend direction
 - translated handling of `n.n.` and `n.b.`
+- clickable measurement rows with a dedicated history view
+
+### Measurement history
+
+Starting with version 0.4.0, measurements with Home Assistant long-term statistics can be opened directly from the Oceamo ICP Card.
+
+Tap a measurement row to open its history view. The history card loads the external Home Assistant statistics for that parameter and shows:
+
+- all imported numeric ICP values over time
+- one point for each available historic ICP statistic
+- current and previous values
+- absolute change from the previous ICP
+- the Oceamo target value or target range
+- a target line or target range directly in the graph
+- selectable data points with date, analysis number and measured value
+
+Historic `n.n.` and `n.b.` values remain non-numeric and are therefore not plotted as artificial zero values.
 
 Manual YAML configuration is also possible:
 
@@ -140,7 +159,9 @@ show_previous: true
 - [x] Analysis number as a dedicated entity
 - [x] Comparison with the previous stored ICP
 - [x] First bundled Oceamo ICP dashboard card
-- [ ] Card polish, richer history views and more display options
+- [x] Card polish and per-category status summaries
+- [x] Clickable per-measurement history view with long-term statistics
+- [ ] More history display options
 - [ ] Newer Oceamo / ICP-MS report formats
 - [ ] Automated tests and release workflow
 - [ ] First tagged HACS release

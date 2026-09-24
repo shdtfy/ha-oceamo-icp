@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.0 - Development
+
+### Added
+
+- Added a dedicated interactive history view for individual ICP measurements.
+- Measurement rows in the Oceamo ICP dashboard card are now clickable when long-term statistics are available.
+- Clicking a measurement opens a modal history card with all imported numeric ICP values for that parameter.
+- The history view shows a time-series line chart, the current value, previous value, absolute change and target value or target range.
+- Target ranges are visualized directly in the chart, and individual data points can be selected for their date, analysis number and measured value.
+- The `ICP Status` sensor now exposes each measurement's external Home Assistant statistic ID to the dashboard card.
+
+### Changed
+
+- Updated the bundled dashboard card and integration version to `0.4.0`.
+- Expanded the dashboard card with a small history indicator on measurements that support the new detail view.
+
 ## 0.3.3 - Development
 
 ### Added
