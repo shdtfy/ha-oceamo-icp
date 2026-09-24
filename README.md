@@ -10,6 +10,77 @@ A custom Home Assistant integration for importing reef-aquarium ICP analysis rep
 
 > **Status:** Early development / beta testing.
 
+## Screenshots
+
+Reef ICP turns uploaded laboratory reports into a provider-independent Home Assistant view with current values, status information and long-term history.
+
+<p align="center">
+  <img src="docs/images/dashboard-overview.jpg"
+       alt="Reef ICP dashboard overview in Home Assistant"
+       width="420">
+</p>
+
+<p align="center">
+  <strong>Dashboard overview</strong><br>
+  Current report, provider/report type, status counts, previous analysis and measurement categories at a glance.
+</p>
+
+<table>
+  <tr>
+    <td align="center"><strong>Measurements & comparison</strong></td>
+    <td align="center"><strong>Cross-provider history</strong></td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/images/measurement-details.jpg"
+           alt="Expanded Reef ICP measurement category"
+           width="330">
+    </td>
+    <td align="center">
+      <img src="docs/images/multi-provider-history.jpg"
+           alt="Reef ICP cross-provider history chart"
+           width="330">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      Target ranges, previous values, changes and trend indicators.
+    </td>
+    <td align="center">
+      Comparable values from different laboratories share one history. The selected point shown here originates from Fauna Marin.
+    </td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td align="center"><strong>PDF import</strong></td>
+    <td align="center"><strong>Home Assistant integration</strong></td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/images/pdf-import.jpg"
+           alt="Reef ICP PDF import dialog"
+           width="330">
+    </td>
+    <td align="center">
+      <img src="docs/images/integration-overview.jpg"
+           alt="Reef ICP integration overview in Home Assistant"
+           width="330">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      Upload a report. Reef ICP detects the supported laboratory automatically.
+    </td>
+    <td align="center">
+      Imported analytes are exposed as normal Home Assistant entities and long-term statistics.
+    </td>
+  </tr>
+</table>
+
+> Screenshots show a development installation containing test reports from multiple supported laboratories and report types.
+
 ## Supported providers
 
 ### Oceamo
@@ -68,7 +139,7 @@ Reports from different providers can be stored in the same aquarium.
 Comparable analytes are normalized to the same internal key, category and unit. This allows a history such as:
 
 ```text
-Fauna Marin → Fauna Marin → Oceamo → Oceamo
+Fauna Marin → Fauna Marin → Oceamo → Oceamo ICP-MS
 ```
 
 to appear in one Home Assistant long-term statistic and in the bundled history chart.
@@ -200,7 +271,7 @@ In the Home Assistant card picker it appears as **Reef ICP Card**.
 The card shows:
 
 - aquarium name
-- provider
+- provider and report type
 - latest analysis/report ID and date
 - overall status and status counts
 - previous analysis and provider
@@ -211,7 +282,7 @@ The card shows:
 - change and trend direction
 - history availability
 - interactive long-term history
-- provider and report ID for selected history points
+- provider, report type and report ID for selected history points
 
 ## Backward compatibility
 
@@ -256,10 +327,13 @@ https://github.com/shdtfy/ha-oceamo-icp
 - [x] Interactive measurement history
 - [x] Stable measurement entities when providers omit analytes
 - [x] Reef ICP project branding
+- [x] README screenshots
 - [ ] Show Oceamo interpretation / evaluation text inside the card
 - [ ] Show laboratory dosing recommendations inside the card
 - [ ] Older ATI layouts and ATI Pro / Ultimate-MS variants
 - [x] Oceamo Reef ICP-MS / current ICP-MS report layout
+- [ ] TRITON ICP-OES
+- [ ] Reef Factory Smart ICP-OES
 - [ ] Additional newer Oceamo report variants if the PDF layout changes
 - [ ] Additional ICP laboratories
 - [ ] Parser regression tests in the repository
@@ -274,6 +348,13 @@ Private test reports are not included in the public repository.
 
 ## Disclaimer
 
-Reef ICP is an independent community project and is not affiliated with or endorsed by Oceamo, Fauna Marin or any other ICP laboratory.
+Reef ICP is an independent community project and is not affiliated with or endorsed by Oceamo, Fauna Marin, ATI or any other ICP laboratory.
 
 Laboratory reference ranges and recommendations are imported from the supplied reports. Reef ICP does not replace professional aquarium husbandry advice.
+
+---
+
+<p align="center">
+  Developed by <strong>Filo Mahlich</strong><br>
+  Reef ICP is an independent open-source community project for Home Assistant.
+</p>
