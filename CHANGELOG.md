@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.5 - Development
+
+### Fixed
+
+- Replacing an already stored ICP report now also repairs its Home Assistant long-term statistics.
+- Previously, changing a report date replaced the report in Reef ICP storage but left the old timestamped recorder point behind because external statistics are keyed by statistic ID plus timestamp.
+- Reef ICP now detects provider/report-ID replacements, clears the affected Reef ICP statistic IDs, waits for the recorder clear operation to finish, and rebuilds those statistics exclusively from the currently stored reports.
+- This removes stale points such as the legacy TRITON PDF creation-date point while keeping the corrected manually selected analysis date.
+
+### Changed
+
+- Statistics cleanup is requested only when an existing provider/report identity is replaced. Normal new-report imports continue using the lightweight incremental statistics import.
+- The rebuild request is transient and is consumed during the automatic config-entry reload triggered by the options flow.
+- Updated the integration version to `0.8.5`.
+
+
 ## 0.8.4 - Development
 
 ### Fixed
