@@ -15,11 +15,18 @@ A custom Home Assistant integration for importing reef-aquarium ICP analysis rep
 ### Oceamo
 
 - Classic Oceamo ICP PDF format
+- Oceamo **Reef ICP-MS** / ICP-MS analysis-report format
+- Automatic distinction between classic reports (`classic_icp`) and ICP-MS reports (`reef_icp_ms`)
+- German classic and English ICP-MS headings / metadata
+- Cross-report normalization of English ICP-MS names such as `Boron`, `Potassium`, `Sodium`, `Iodine`, `Copper` and `Tungsten` to the existing Reef ICP analytes
+- ICP-MS-only / extended parameters such as SAK/SAC254, Cäsium, Cer, Gallium, Ruthenium, Thorium, Tellur, Neodym and Hafnium when present in the supplied report
 - Report metadata and sample timestamp
 - Measurements and target values
-- Oceamo green / yellow / red status artwork
-- `n.n.` and `n.b.`
-- Interpretation and product recommendation text
+- Oceamo rating artwork when the embedded icon is recognized; conservative range/limit fallback for changed artwork
+- `n.n.` and `n.b.` without converting them to zero
+- Interpretation and product recommendation text when present
+
+The ICP-MS parser is designed around Oceamo's publicly documented current parameter set and public English-format analysis-report examples, including the `MSR...` report family. Public reports **MSR229115** and **MSR234022** were used as format/value references for this development step.
 
 ### Fauna Marin
 
@@ -52,7 +59,7 @@ The ATI parser has been developed against a real public current-format ATI repor
 
 Reef ICP stores the laboratory provider separately from a report-type hint. This prepares the integration for different analysis products from the same laboratory, for example classic Oceamo ICP versus **Oceamo Reef ICP-MS**, without treating them as different providers.
 
-Current report-type hints include `classic_icp`, `reef_icp` and `ati_icp`. Future parsers can add dedicated types such as Oceamo ICP-MS or ATI Ultimate-MS while keeping the same provider-neutral history model.
+Current report-type hints include `classic_icp`, `reef_icp_ms`, `reef_icp` and `ati_icp`. Future parsers can add further types such as ATI Ultimate-MS while keeping the same provider-neutral history model.
 
 ## Multi-provider history
 
@@ -107,6 +114,7 @@ If no supported provider can be identified, the import stops instead of guessing
 - Bundle and automatically load the **Reef ICP Card**
 - Open an interactive history chart by tapping a measurement
 - Show the provider for the current report, previous report and selected history points
+- Label Oceamo ICP-MS reports as `Oceamo · ICP-MS` in the dashboard/history source display
 
 ## Current entities
 
@@ -251,7 +259,8 @@ https://github.com/shdtfy/ha-oceamo-icp
 - [ ] Show Oceamo interpretation / evaluation text inside the card
 - [ ] Show laboratory dosing recommendations inside the card
 - [ ] Older ATI layouts and ATI Pro / Ultimate-MS variants
-- [ ] Oceamo Reef ICP-MS and newer Oceamo report formats
+- [x] Oceamo Reef ICP-MS / current ICP-MS report layout
+- [ ] Additional newer Oceamo report variants if the PDF layout changes
 - [ ] Additional ICP laboratories
 - [ ] Parser regression tests in the repository
 - [ ] First tagged HACS release

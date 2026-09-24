@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.7.0 - Development
+
+### Added
+
+- Added **Oceamo Reef ICP-MS** support while keeping Oceamo as the same provider and storing the format as `report_type: reef_icp_ms`.
+- Added automatic detection of English Oceamo `Analysis Report` PDFs and `MSR...` analysis IDs in addition to the existing German classic format.
+- Added English ICP-MS category headings (`Main Parameters`, `Main Elements`, `Trace Elements`, `Pollutants`, `Nutrients`) and common RO/DI section headings.
+- Added canonical name mapping so English ICP-MS analytes share the existing entities and long-term statistics with matching classic Oceamo values.
+- Added support for the ICP-MS DOC surrogate `SAK254` / `SAC254` and its `m-1` unit.
+- Added mappings for ICP-MS extended / ultra-trace elements including caesium, cerium, gallium, ruthenium, thorium, tellurium, neodymium, tungsten, uranium and hafnium when they occur in a report.
+- Added conservative status fallback from published target ranges/limits when a newer Oceamo PDF uses rating artwork that Reef ICP does not recognize yet.
+- The dashboard/history source label now distinguishes Oceamo ICP-MS points as **Oceamo · ICP-MS**.
+
+### Changed
+
+- Generalized the Oceamo parser so classic and ICP-MS reports share one provider-neutral code path instead of creating a second Oceamo provider.
+- German classic analyte keys remain unchanged for backward compatibility with existing entity IDs and external statistic IDs.
+- Updated the integration and bundled dashboard card to `0.7.0`.
+
+### Tested
+
+- Regression-tested parsing of the existing classic Oceamo report `OC188727`.
+- Regression-tested all four available Fauna Marin reports and the existing ATI current-layout test report.
+- Tested the new ICP-MS parser path with a representative English `MSR...` report fixture covering main parameters, main elements, trace elements, pollutants, nutrients and RO/DI water.
+- Development was cross-checked against Oceamo's current published ICP-MS parameter list and public report examples including `MSR229115` and `MSR234022`.
+
 ## 0.6.1 - Development
 
 ### Fixed
