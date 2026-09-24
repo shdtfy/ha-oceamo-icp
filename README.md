@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="custom_components/oceamo_icp/brand/logo.png"
+       alt="Oceamo ICP for Home Assistant"
+       width="900">
+</p>
+
 # Oceamo ICP for Home Assistant
 
 A custom Home Assistant integration for importing Oceamo ICP analysis reports directly from PDF files.
