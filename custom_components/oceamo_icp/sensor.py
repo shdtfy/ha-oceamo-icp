@@ -209,6 +209,33 @@ def _measurement_map(report: dict[str, Any] | None) -> dict[tuple[str, str], dic
     }
 
 
+def _latest_measurement_sources(
+    entry: ConfigEntry,
+    latest_report: dict[str, Any],
+) -> list[tuple[dict[str, Any], dict[str, Any], bool]]:
+    """Return the newest available result for every analyte ever imported.
+
+    A provider may omit parameters that another provider measured. Keeping the
+    newest available result for each analyte prevents those stable Home
+    Assistant entities from becoming unavailable after a cross-provider import.
+    The boolean marks whether the analyte is actually present in the newest
+    report, so carried-forward values can never be mistaken for fresh results.
+    """
+    current_keys = set(_measurement_map(latest_report))
+    seen: set[tuple[str, str]] = set()
+    sources: list[tuple[dict[str, Any], dict[str, Any], bool]] = []
+
+    for report in sorted(_reports(entry), key=_report_sort_key, reverse=True):
+        for measurement in report.get("measurements", []):
+            key = _measurement_key(measurement)
+            if key in seen:
+                continue
+            seen.add(key)
+            sources.append((report, measurement, key in current_keys))
+
+    return sources
+
+
 def _delta(current_value: Any, previous_value: Any) -> float | None:
     """Return the numeric difference when both values are measurable."""
     if not isinstance(current_value, (int, float)):
@@ -291,6 +318,9 @@ async def async_setup_entry(
     previous_report = _previous_report(entry, report)
     previous_measurements = _measurement_map(previous_report)
 
+    # The dashboard remains a strict view of the newest report. This prevents
+    # carried-forward values from looking as though the current laboratory
+    # measured them.
     enriched_measurements = [
         _measurement_with_history(
             measurement,
@@ -304,15 +334,37 @@ async def async_setup_entry(
             entry, measurement
         )
 
+    enriched_current = {
+        _measurement_key(measurement): measurement
+        for measurement in enriched_measurements
+    }
+
     entities: list[SensorEntity] = [
         OceamoReportSensor(entry, report, previous_report, enriched_measurements),
         OceamoAnalysisDateSensor(entry, report),
         OceamoAnalysisNumberSensor(entry, report),
     ]
-    entities.extend(
-        OceamoMeasurementSensor(entry, report, measurement)
-        for measurement in enriched_measurements
-    )
+
+    # Individual Home Assistant entities are stable across providers. If the
+    # newest report omits an analyte, expose its newest available result from
+    # an older report and mark it explicitly as not included in the current
+    # report. A current n.n./n.b./n.g./--- result still wins because the
+    # analyte is present in the newest report.
+    for source_report, source_measurement, included_in_current in (
+        _latest_measurement_sources(entry, report)
+    ):
+        key = _measurement_key(source_measurement)
+        measurement = enriched_current.get(key, source_measurement)
+        entities.append(
+            OceamoMeasurementSensor(
+                entry,
+                source_report,
+                measurement,
+                current_report=report,
+                included_in_current_report=included_in_current,
+            )
+        )
+
     async_add_entities(entities)
 
 
@@ -445,7 +497,7 @@ class OceamoAnalysisNumberSensor(OceamoBaseSensor):
 
 
 class OceamoMeasurementSensor(OceamoBaseSensor):
-    """One measurement from the latest report."""
+    """Newest available result for one analyte across all stored reports."""
 
     _attr_state_class = SensorStateClass.MEASUREMENT
 
@@ -454,9 +506,14 @@ class OceamoMeasurementSensor(OceamoBaseSensor):
         entry: ConfigEntry,
         report: dict[str, Any],
         measurement: dict[str, Any],
+        *,
+        current_report: dict[str, Any],
+        included_in_current_report: bool,
     ) -> None:
         super().__init__(entry, report)
         self._measurement = measurement
+        self._current_report = current_report
+        self._included_in_current_report = included_in_current_report
 
         category = measurement.get("category", "unknown")
         key = measurement.get("key", "unknown")
@@ -473,10 +530,14 @@ class OceamoMeasurementSensor(OceamoBaseSensor):
     @property
     @override
     def extra_state_attributes(self) -> dict[str, Any]:
+        source_metadata = self._report.get("metadata", {})
+        current_metadata = self._current_report.get("metadata", {})
+
         return {
             "category": self._measurement.get("category"),
             "provider": _report_provider(self._report),
             "provider_name": _report_provider_name(self._report),
+            "report_type": _report_type(self._report),
             "raw_value": self._measurement.get("raw_value"),
             "source_raw_value": self._measurement.get("source_raw_value"),
             "source_unit": self._measurement.get("source_unit"),
@@ -488,9 +549,26 @@ class OceamoMeasurementSensor(OceamoBaseSensor):
             "target": self._measurement.get("target"),
             "status": self._measurement.get("status"),
             "recommendation": self._measurement.get("recommendation"),
-            "analysis_number": self._report.get("metadata", {}).get("analysis_number"),
-            "analysis_date": self._report.get("metadata", {}).get("analysis_date"),
-            "sample_taken": self._report.get("metadata", {}).get("sample_taken"),
+            # These existing attributes describe the report that actually
+            # supplied the sensor state.
+            "analysis_number": source_metadata.get("analysis_number"),
+            "analysis_date": source_metadata.get("analysis_date"),
+            "sample_taken": source_metadata.get("sample_taken"),
+            # v0.6.1: explicitly distinguish a carried-forward result from a
+            # value that was really included in the newest ICP.
+            "included_in_current_report": self._included_in_current_report,
+            "last_measured_analysis_number": source_metadata.get("analysis_number"),
+            "last_measured_analysis_date": source_metadata.get("analysis_date"),
+            "last_measured_sample_taken": source_metadata.get("sample_taken"),
+            "last_measured_provider": _report_provider(self._report),
+            "last_measured_provider_name": _report_provider_name(self._report),
+            "last_measured_report_type": _report_type(self._report),
+            "current_analysis_number": current_metadata.get("analysis_number"),
+            "current_analysis_date": current_metadata.get("analysis_date"),
+            "current_sample_taken": current_metadata.get("sample_taken"),
+            "current_provider": _report_provider(self._current_report),
+            "current_provider_name": _report_provider_name(self._current_report),
+            "current_report_type": _report_type(self._current_report),
             "has_previous": self._measurement.get("has_previous"),
             "previous_value": self._measurement.get("previous_value"),
             "previous_raw_value": self._measurement.get("previous_raw_value"),
