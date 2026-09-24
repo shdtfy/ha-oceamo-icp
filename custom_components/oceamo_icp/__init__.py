@@ -17,7 +17,7 @@ from .statistics import async_import_icp_statistics
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
-CARD_VERSION = "0.3.1"
+CARD_VERSION = "0.3.2"
 CARD_URL = "/oceamo_icp/oceamo-icp-card.js"
 CARD_RESOURCE_URL = f"{CARD_URL}?v={CARD_VERSION}"
 CARD_FILE = Path(__file__).parent / "www" / "oceamo-icp-card.js"
@@ -33,9 +33,6 @@ async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
     if not isinstance(resources, ResourceStorageCollection):
         return
 
-    # Ensure the existing resource store is fully loaded before changing it.
-    # This is important because writing an unloaded collection could otherwise
-    # overwrite resources registered by HACS or other integrations.
     await resources.async_get_info()
 
     existing = None
@@ -76,10 +73,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         ]
     )
 
-    # Register both as an extra frontend module and as a persistent Lovelace
-    # resource. The latter makes the card reliably available to the card picker
-    # even when the frontend was opened before this custom integration finished
-    # loading during Home Assistant startup.
     add_extra_js_url(hass, CARD_RESOURCE_URL)
     await _async_register_lovelace_resource(hass)
 
