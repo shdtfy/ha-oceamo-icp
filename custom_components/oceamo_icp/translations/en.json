@@ -2,31 +2,33 @@
   "config": {
     "step": {
       "user": {
-        "title": "Oceamo ICP",
-        "description": "Create an aquarium and import its first Oceamo ICP PDF report.",
+        "title": "Reef ICP",
+        "description": "Create an aquarium and upload the first ICP PDF. Reef ICP detects the supported laboratory automatically.",
         "data": {
           "aquarium_name": "Aquarium name",
-          "pdf_file": "Oceamo PDF report"
+          "pdf_file": "ICP PDF report"
         }
       }
     },
     "error": {
-      "invalid_oceamo_pdf": "The PDF could not be recognized as a supported Oceamo analysis report.",
+      "unsupported_provider": "The ICP laboratory could not be detected or is not supported yet.",
+      "invalid_icp_pdf": "The PDF was recognized as a supported provider but could not be parsed as a supported ICP report.",
       "unknown": "An unexpected error occurred while reading the PDF."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Import another Oceamo analysis",
-        "description": "Upload another Oceamo PDF. Existing analyses with the same analysis number are replaced.",
+        "title": "Import another ICP analysis",
+        "description": "Upload another ICP PDF. Reef ICP detects the provider automatically. Existing reports with the same provider and report ID are replaced.",
         "data": {
-          "pdf_file": "Oceamo PDF report"
+          "pdf_file": "ICP PDF report"
         }
       }
     },
     "error": {
-      "invalid_oceamo_pdf": "The PDF could not be recognized as a supported Oceamo analysis report.",
+      "unsupported_provider": "The ICP laboratory could not be detected or is not supported yet.",
+      "invalid_icp_pdf": "The PDF was recognized as a supported provider but could not be parsed as a supported ICP report.",
       "unknown": "An unexpected error occurred while reading the PDF."
     }
   }

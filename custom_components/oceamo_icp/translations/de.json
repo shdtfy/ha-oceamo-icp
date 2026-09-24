@@ -2,31 +2,33 @@
   "config": {
     "step": {
       "user": {
-        "title": "Oceamo ICP",
-        "description": "Lege ein Aquarium an und importiere den ersten Oceamo-ICP-Bericht als PDF.",
+        "title": "Reef ICP",
+        "description": "Lege ein Aquarium an und lade den ersten ICP-PDF-Bericht hoch. Reef ICP erkennt den unterstützten Laboranbieter automatisch.",
         "data": {
           "aquarium_name": "Name des Aquariums",
-          "pdf_file": "Oceamo-PDF-Bericht"
+          "pdf_file": "ICP-PDF-Bericht"
         }
       }
     },
     "error": {
-      "invalid_oceamo_pdf": "Die PDF konnte nicht als unterstützter Oceamo-Analysebericht erkannt werden.",
+      "unsupported_provider": "Der ICP-Anbieter konnte nicht automatisch erkannt werden oder wird noch nicht unterstützt.",
+      "invalid_icp_pdf": "Der Anbieter wurde erkannt, der PDF-Bericht konnte aber nicht als unterstützte ICP-Analyse verarbeitet werden.",
       "unknown": "Beim Lesen der PDF ist ein unerwarteter Fehler aufgetreten."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Weitere Oceamo-Analyse importieren",
-        "description": "Lade eine weitere Oceamo-PDF hoch. Eine bereits vorhandene Analyse mit derselben Analysenummer wird ersetzt.",
+        "title": "Weitere ICP-Analyse importieren",
+        "description": "Lade einfach eine weitere ICP-PDF hoch. Reef ICP erkennt den Anbieter automatisch. Ein vorhandener Bericht mit demselben Anbieter und derselben Berichts-ID wird ersetzt.",
         "data": {
-          "pdf_file": "Oceamo-PDF-Bericht"
+          "pdf_file": "ICP-PDF-Bericht"
         }
       }
     },
     "error": {
-      "invalid_oceamo_pdf": "Die PDF konnte nicht als unterstützter Oceamo-Analysebericht erkannt werden.",
+      "unsupported_provider": "Der ICP-Anbieter konnte nicht automatisch erkannt werden oder wird noch nicht unterstützt.",
+      "invalid_icp_pdf": "Der Anbieter wurde erkannt, der PDF-Bericht konnte aber nicht als unterstützte ICP-Analyse verarbeitet werden.",
       "unknown": "Beim Lesen der PDF ist ein unerwarteter Fehler aufgetreten."
     }
   }
