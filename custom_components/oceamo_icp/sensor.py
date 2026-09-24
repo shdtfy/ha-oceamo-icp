@@ -21,6 +21,7 @@ from .const import (
     DOMAIN,
     SUPPLY_SYSTEM_NAMES,
 )
+from .recommendations import build_supply_recommendations
 from .statistics import statistic_id_for
 
 ANALYSIS_NUMBER_UNIQUE_ID_V1 = "_analysis_number"
@@ -438,6 +439,11 @@ class OceamoReportSensor(OceamoBaseSensor):
         )
 
         profile = _aquarium_profile(self._entry)
+        supply_recommendations = build_supply_recommendations(
+            profile.get("supply_system"),
+            profile.get("aquarium_volume_l"),
+            self._measurements,
+        )
 
         return {
             **profile,
@@ -462,6 +468,7 @@ class OceamoReportSensor(OceamoBaseSensor):
             "measurements": self._measurements,
             "interpretation": self._report.get("interpretation"),
             "product_recommendations": self._report.get("product_recommendations"),
+            "supply_recommendations": supply_recommendations,
             "stored_report_count": len(_reports(self._entry)),
             "stored_reports": _stored_report_summary(self._entry),
         }
