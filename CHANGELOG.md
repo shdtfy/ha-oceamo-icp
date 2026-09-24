@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.0 - Development
+
+### Added
+
+- Historical ICP values as Home Assistant external long-term statistics.
+- Statistics use the original sample timestamp from each Oceamo report.
+- Sample timestamps are rounded down to the hour because Home Assistant external statistics require hourly timestamps.
+- Numeric ICP values are stored with mean/min/max values for graphing.
+- `n.n.` and `n.b.` values are never converted to numeric zero.
+- `historical_statistic_id` attribute on measurement sensors.
+- `display_value` attribute, including `Nicht nachweisbar` and `Nicht bestimmt`.
+- Compact `stored_reports` history on the `ICP Status` sensor.
+
+### Changed
+
+- Added `recorder` as a dependency.
+- Integration version bumped to 0.2.0.
+
 ## 0.1.0 - Development
 
 ### Added
@@ -12,11 +30,3 @@
 - Sensor entities for ICP parameters.
 - A report/status sensor intended as the data source for the future custom dashboard card.
 - Import of additional PDFs through the integration options flow.
-
-### Reviewed against current Home Assistant APIs
-
-- Uses the current `FileSelector` and `file_upload` flow.
-- Processes uploaded files on the executor thread as required by Home Assistant.
-- Declares `file_upload` as a dependency.
-- Uses the current `OptionsFlow.config_entry` property instead of the removed legacy constructor pattern.
-- Stores mutable imported reports in config-entry options and uses `OptionsFlowWithReload`.
