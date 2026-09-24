@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1 - Development
+
+### Fixed
+
+- Fixed a typo in the measurement-map helper that prevented the `ICP Status` sensor from exposing its measurement list after updating to version 0.4.0.
+- Restored the dashboard card data source so measurement rows and the new history view can load normally.
+- Updated the bundled dashboard card and integration version to `0.4.1`.
+
 ## 0.4.0 - Development
 
 ### Added
