@@ -91,7 +91,7 @@ def _parse_uploaded_pdf(
     try:
         provider = detect_icp_provider(preserved_path)
         report = parse_icp_pdf(preserved_path)
-    except PendingAnalysisDateError as err:
+    except MissingAnalysisDateError as err:
         raise PendingAnalysisDateError(str(preserved_path), provider) from err
     except UnsupportedIcpProviderError:
         _cleanup_pending_pdf(str(preserved_path))
