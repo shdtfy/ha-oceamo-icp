@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1 - Development
+
+### Fixed
+
+- Fixed the bundled dashboard card not appearing in the Home Assistant card picker.
+- The card is now registered as a versioned Lovelace module in storage mode in addition to the frontend module registration.
+- The existing Lovelace resource collection is explicitly loaded before it is modified, so resources from HACS and other integrations are preserved.
+- Existing Oceamo card resource entries are updated in place instead of duplicated.
+
 ## 0.3.0 - Development
 
 ### Added
