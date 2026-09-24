@@ -9,5 +9,6 @@ CONF_REPORTS = "reports"
 
 PROVIDER_OCEAMO = "oceamo"
 PROVIDER_FAUNA_MARIN = "fauna_marin"
+PROVIDER_ATI = "ati"
 
 MAX_STORED_REPORTS = 100

@@ -59,6 +59,23 @@ def _report_provider_name(report: dict[str, Any] | None) -> str:
     )
 
 
+def _report_type(report: dict[str, Any] | None) -> str | None:
+    """Return a report-type hint, including sensible legacy fallbacks."""
+    if report is None:
+        return None
+    value = report.get("report_type") or report.get("metadata", {}).get("report_type")
+    if value:
+        return str(value)
+    provider = _report_provider(report)
+    if provider == "oceamo":
+        return "classic_icp"
+    if provider == "fauna_marin":
+        return "reef_icp"
+    if provider == "ati":
+        return "ati_icp"
+    return None
+
+
 def _report_identity(report: dict[str, Any]) -> tuple[str, str]:
     """Return a provider-specific identity for one stored report."""
     metadata = report.get("metadata", {})
@@ -127,6 +144,7 @@ def _stored_report_summary(entry: ConfigEntry) -> list[dict[str, Any]]:
                 "tank_type": metadata.get("tank_type"),
                 "provider": _report_provider(report),
                 "provider_name": _report_provider_name(report),
+                "report_type": _report_type(report),
             }
         )
     return summaries
@@ -355,6 +373,7 @@ class OceamoReportSensor(OceamoBaseSensor):
             "tank_type": metadata.get("tank_type"),
             "provider": _report_provider(self._report),
             "provider_name": _report_provider_name(self._report),
+            "report_type": _report_type(self._report),
             "previous_analysis_number": previous_metadata.get("analysis_number"),
             "previous_analysis_date": previous_metadata.get("analysis_date"),
             "previous_sample_taken": previous_metadata.get("sample_taken"),
@@ -364,6 +383,7 @@ class OceamoReportSensor(OceamoBaseSensor):
             "previous_provider_name": _report_provider_name(self._previous_report)
             if self._previous_report is not None
             else None,
+            "previous_report_type": _report_type(self._previous_report),
             "status_counts": _status_counts(self._report),
             "measurements": self._measurements,
             "interpretation": self._report.get("interpretation"),
@@ -420,6 +440,7 @@ class OceamoAnalysisNumberSensor(OceamoBaseSensor):
             "tank_type": metadata.get("tank_type"),
             "provider": _report_provider(report),
             "provider_name": _report_provider_name(report),
+            "report_type": _report_type(report),
         }
 
 

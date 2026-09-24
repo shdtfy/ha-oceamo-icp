@@ -14,10 +14,12 @@ from pypdf.generic import ContentStream
 
 PROVIDER_OCEAMO = "oceamo"
 PROVIDER_FAUNA_MARIN = "fauna_marin"
+PROVIDER_ATI = "ati"
 
 PROVIDER_NAMES = {
     PROVIDER_OCEAMO: "Oceamo",
     PROVIDER_FAUNA_MARIN: "Fauna Marin",
+    PROVIDER_ATI: "ATI",
 }
 
 
@@ -159,6 +161,102 @@ _FAUNA_ANALYTES: dict[str, tuple[str, str, str, str, float]] = {
     "Hg": ("quecksilber", "Quecksilber", "pollutants", "µg/l", 1.0),
     "Pb": ("blei", "Blei", "pollutants", "µg/l", 1.0),
 }
+
+
+# ATI's current laboratory PDF format is laid out as small blocks rather than
+# conventional rows: symbol, analyte name, measured value, ideal value, then
+# the laboratory's textual assessment. The canonical key/category choices
+# below intentionally follow Reef ICP's existing cross-provider model. That
+# lets directly comparable values share one Home Assistant statistic even when
+# ATI places them under a differently named visual section.
+#
+# Tuple: (key, display name, category, normalized unit)
+_ATI_ANALYTES: dict[str, tuple[str, str, str, str]] = {
+    "Sal. total": ("salinitaet", "Salinität", "basic", "psu"),
+    "KH": ("alkalinitaet", "Alkalinität", "basic", "dKH"),
+    "Cl": ("chlorid", "Chlorid", "major_elements", "mg/l"),
+    "Na": ("natrium", "Natrium", "major_elements", "mg/l"),
+    "Mg": ("magnesium", "Magnesium", "major_elements", "mg/l"),
+    "S": ("schwefel", "Schwefel", "major_elements", "mg/l"),
+    "Ca": ("calcium", "Calcium", "major_elements", "mg/l"),
+    "K": ("kalium", "Kalium", "major_elements", "mg/l"),
+    "Br": ("bromid", "Bromid", "major_elements", "mg/l"),
+    "Sr": ("strontium", "Strontium", "major_elements", "mg/l"),
+    "B": ("bor", "Bor", "major_elements", "mg/l"),
+    # Oceamo exposes fluoride in its trace-element section. Keep the canonical
+    # category so ATI and Oceamo use the same history statistic.
+    "F": ("fluorid", "Fluorid", "trace_elements", "mg/l"),
+    "Li": ("lithium", "Lithium", "trace_elements", "µg/l"),
+    "Si": ("silicium", "Silicium", "nutrients", "µg/l"),
+    "I": ("iod", "Iod", "trace_elements", "µg/l"),
+    "Ba": ("barium", "Barium", "trace_elements", "µg/l"),
+    "Mo": ("molybdaen", "Molybdän", "trace_elements", "µg/l"),
+    "Ni": ("nickel", "Nickel", "trace_elements", "µg/l"),
+    "Mn": ("mangan", "Mangan", "trace_elements", "µg/l"),
+    "As": ("arsen", "Arsen", "pollutants", "µg/l"),
+    "Be": ("beryllium", "Beryllium", "pollutants", "µg/l"),
+    "Cr": ("chrom", "Chrom", "trace_elements", "µg/l"),
+    "Co": ("cobalt", "Cobalt", "trace_elements", "µg/l"),
+    "Fe": ("eisen", "Eisen", "trace_elements", "µg/l"),
+    "Cu": ("kupfer", "Kupfer", "trace_elements", "µg/l"),
+    "Se": ("selen", "Selen", "trace_elements", "µg/l"),
+    "Ag": ("silber", "Silber", "pollutants", "µg/l"),
+    "V": ("vanadium", "Vanadium", "trace_elements", "µg/l"),
+    "Zn": ("zink", "Zink", "trace_elements", "µg/l"),
+    "Sn": ("zinn", "Zinn", "trace_elements", "µg/l"),
+    "Rb": ("rubidium", "Rubidium", "trace_elements", "µg/l"),
+    "Al": ("aluminium", "Aluminium", "pollutants", "µg/l"),
+    "Sb": ("antimon", "Antimon", "pollutants", "µg/l"),
+    "Bi": ("bismuth", "Bismuth", "pollutants", "µg/l"),
+    "Cd": ("cadmium", "Cadmium", "pollutants", "µg/l"),
+    "Ga": ("gallium", "Gallium", "pollutants", "µg/l"),
+    "Ge": ("germanium", "Germanium", "pollutants", "µg/l"),
+    "La": ("lanthan", "Lanthan", "pollutants", "µg/l"),
+    "Pb": ("blei", "Blei", "pollutants", "µg/l"),
+    "Hg": ("quecksilber", "Quecksilber", "pollutants", "µg/l"),
+    "Nd": ("neodym", "Neodym", "pollutants", "µg/l"),
+    "Nb": ("niob", "Niob", "pollutants", "µg/l"),
+    "Te": ("tellur", "Tellur", "pollutants", "µg/l"),
+    "Tl": ("thallium", "Thallium", "pollutants", "µg/l"),
+    "Ti": ("titan", "Titan", "pollutants", "µg/l"),
+    "W": ("wolfram", "Wolfram", "pollutants", "µg/l"),
+    "Zr": ("zirkonium", "Zirkonium", "pollutants", "µg/l"),
+    "P": ("gesamtphosphor_icp", "Gesamtphosphor (ICP)", "nutrients", "µg/l"),
+    "PO4": ("phosphat", "Phosphat", "nutrients", "mg/l"),
+    "NO3": ("nitrat", "Nitrat", "nutrients", "mg/l"),
+    "NO2": ("nitrit", "Nitrit", "nutrients", "mg/l"),
+}
+
+_ATI_CATEGORY_HEADINGS = {
+    "basiswerte": "basic",
+    "base elements": "basic",
+    "base values": "basic",
+    "mengenelemente": "major_elements",
+    "major elements": "major_elements",
+    "spurenelemente": "trace_elements",
+    "minor elements": "trace_elements",
+    "trace elements": "trace_elements",
+    "schadstoffe": "pollutants",
+    "pollutants": "pollutants",
+    "nährstoffe": "nutrients",
+    "naehrstoffe": "nutrients",
+    "nutrients": "nutrients",
+    "osmose": "osmosis",
+    "osmosis": "osmosis",
+}
+
+_ATI_VALUE_RE = re.compile(
+    r"^(?P<value>---|n\.?n\.?|n\.?d\.?|u\.?|<\s*-?\d+(?:[.,]\d+)?|>\s*-?\d+(?:[.,]\d+)?|-?\d+(?:[.,]\d+)?)"
+    r"\s*(?P<unit>PSU|psu|°?dKH|mg/l|µg/l|μg/l|ug/l|ng/l|µg/L|mg/L|ng/L)?$",
+    re.IGNORECASE,
+)
+
+_ATI_IDEAL_RE = re.compile(
+    r"^(?:Idealwert|Ideal value)\s*:\s*"
+    r"(?P<value>-?\d+(?:[.,]\d+)?)\s*"
+    r"(?P<unit>PSU|psu|°?dKH|mg/l|µg/l|μg/l|ug/l|ng/l|µg/L|mg/L|ng/L)?$",
+    re.IGNORECASE,
+)
 
 
 def _decimal(value: str) -> float:
@@ -433,6 +531,7 @@ def _extract_oceamo_metadata(text: str) -> dict[str, Any]:
     metadata: dict[str, Any] = {
         "provider": PROVIDER_OCEAMO,
         "provider_name": PROVIDER_NAMES[PROVIDER_OCEAMO],
+        "report_type": "classic_icp",
     }
 
     if match := re.search(r"Analysedatum:\s*(\d{2}\.\d{2}\.\d{4})", text):
@@ -540,6 +639,7 @@ def parse_oceamo_pdf(path: str | Path) -> dict[str, Any]:
         "schema_version": 2,
         "provider": PROVIDER_OCEAMO,
         "provider_name": PROVIDER_NAMES[PROVIDER_OCEAMO],
+        "report_type": "classic_icp",
         "metadata": metadata,
         "measurements": measurements,
         "interpretation": _extract_oceamo_interpretation(full_text),
@@ -552,6 +652,7 @@ def _extract_fauna_metadata(layout_text: str) -> dict[str, Any]:
     metadata: dict[str, Any] = {
         "provider": PROVIDER_FAUNA_MARIN,
         "provider_name": PROVIDER_NAMES[PROVIDER_FAUNA_MARIN],
+        "report_type": "reef_icp",
     }
 
     if match := re.search(r"Proben-ID:\s*([A-Za-z0-9-]+)", layout_text):
@@ -792,12 +893,404 @@ def parse_fauna_marin_pdf(path: str | Path) -> dict[str, Any]:
         "schema_version": 2,
         "provider": PROVIDER_FAUNA_MARIN,
         "provider_name": PROVIDER_NAMES[PROVIDER_FAUNA_MARIN],
+        "report_type": "reef_icp",
         "metadata": metadata,
         "measurements": measurements,
         "interpretation": None,
         # Fauna Marin recommendations are stored per measurement because the
         # PDF provides amount, duration and product in the corresponding row.
         "product_recommendations": None,
+    }
+
+
+
+def _normalize_ati_unit(unit: str | None, fallback: str) -> str:
+    """Normalize ATI unit spellings to Reef ICP's existing unit strings."""
+    if not unit:
+        return fallback
+    value = unit.replace("μ", "µ").replace("ug", "µg")
+    value = value.replace("/L", "/l")
+    if value.lower() == "psu":
+        return "psu"
+    if value.lower().endswith("dkh"):
+        return "dKH"
+    return value
+
+
+def _ati_report_type(text: str) -> str:
+    """Return an ATI report-type hint without relying on it for parsing."""
+    normalized = " ".join(text.split()).casefold()
+    if "ultimate-ms" in normalized or "ultimate ms" in normalized or "icp-ms" in normalized:
+        return "ultimate_ms"
+    if "icp-oes pro" in normalized or "laboranalyse pro" in normalized:
+        return "pro"
+    if "icp-oes standard" in normalized or "laboranalyse standard" in normalized:
+        return "standard"
+    return "ati_icp"
+
+
+def _parse_ati_date(value: str) -> str:
+    """Parse common German/English date representations used by ATI."""
+    value = value.strip()
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        return datetime.strptime(value, "%Y-%m-%d").date().isoformat()
+    if "." in value:
+        return datetime.strptime(value, "%d.%m.%Y").date().isoformat()
+    if "/" in value:
+        first, second, _year = value.split("/", 2)
+        # English ATI reports commonly use month/day/year. If the first field
+        # cannot be a month, fall back to day/month/year.
+        fmt = "%d/%m/%Y" if int(first) > 12 else "%m/%d/%Y"
+        return datetime.strptime(value, fmt).date().isoformat()
+    raise ValueError(f"Unsupported ATI date: {value}")
+
+
+def _extract_ati_metadata(text: str) -> dict[str, Any]:
+    """Extract ATI metadata from the current lab PDF layout."""
+    metadata: dict[str, Any] = {
+        "provider": PROVIDER_ATI,
+        "provider_name": PROVIDER_NAMES[PROVIDER_ATI],
+        "report_type": _ati_report_type(text),
+    }
+
+    if match := re.search(r"\(ID:\s*([A-Za-z0-9-]+)\)", text, flags=re.IGNORECASE):
+        metadata["analysis_number"] = match.group(1)
+        metadata["provider_report_id"] = match.group(1)
+    elif match := re.search(r"(?:Barcode|Analysis ID|Analyse-ID)\s*:?\s*([A-Za-z0-9-]{4,})", text, flags=re.IGNORECASE):
+        metadata["analysis_number"] = match.group(1)
+        metadata["provider_report_id"] = match.group(1)
+
+    flat = " ".join(text.split())
+
+    if match := re.search(
+        r"(?:Aquarium|Aquarium name)\s+(.+?)\s+(?:Netto-Volumen|Net volume)",
+        flat,
+        flags=re.IGNORECASE,
+    ):
+        metadata["tank_name"] = match.group(1).strip()
+
+    if match := re.search(
+        r"(?:Grund der Analyse|Reason for analysis)\s+(.+?)\s+(?:Barcode|Analysis ID|Analyse-ID)",
+        flat,
+        flags=re.IGNORECASE,
+    ):
+        metadata["analysis_reason"] = match.group(1).strip()
+
+    if match := re.search(
+        r"Barcode\s+([A-Z0-9-]+)\s*\(ID:",
+        flat,
+        flags=re.IGNORECASE,
+    ):
+        metadata["barcode"] = match.group(1).strip()
+
+    if match := re.search(r"Netto-Volumen\s+(\d+(?:[.,]\d+)?)\s*Liter", flat, flags=re.IGNORECASE):
+        metadata["aquarium_volume_l"] = _decimal(match.group(1))
+    elif match := re.search(r"Net volume\s+(\d+(?:[.,]\d+)?)\s*(?:liters?|litres?|l)\b", flat, flags=re.IGNORECASE):
+        metadata["aquarium_volume_l"] = _decimal(match.group(1))
+
+    # ATI's PDF places the three labels first and the corresponding three dates
+    # directly afterwards. Keep all three when available, but use the evaluated
+    # date as the analysis date. Do not invent a sample-taking timestamp.
+    header_match = re.search(
+        r"(?:Erstellt|Created).*?(?:Im Labor angekommen|Arrived at laboratory).*?"
+        r"(?:Ausgewertet|Evaluated)(?P<tail>.*?)(?:Qualitätsbewertung|Quality assessment|Auswertung(?: Basis)? Salzwasser|Saltwater evaluation)",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    date_source = header_match.group("tail") if header_match else text[:2500]
+    dates = re.findall(
+        r"\b(\d{2}[./]\d{2}[./]\d{4}|\d{4}-\d{2}-\d{2})\b",
+        date_source,
+    )
+    if len(dates) >= 3:
+        metadata["created_date"] = _parse_ati_date(dates[0])
+        metadata["received_date"] = _parse_ati_date(dates[1])
+        metadata["evaluated_date"] = _parse_ati_date(dates[2])
+        metadata["analysis_date"] = metadata["evaluated_date"]
+    elif dates:
+        metadata["analysis_date"] = _parse_ati_date(dates[-1])
+        metadata["evaluated_date"] = metadata["analysis_date"]
+
+    return metadata
+
+
+def _ati_status_from_text(lines: list[str]) -> dict[str, str | None]:
+    """Map ATI's textual assessment labels to the shared status model."""
+    text = " ".join(lines).casefold()
+
+    low_critical = ("zu niedrig", "too low", "critical low")
+    high_critical = ("zu hoch", "too high", "critical high")
+    low_warning = ("wenig", "niedrig", "low", "decreased")
+    high_warning = ("erhöht", "erhoeht", "increased", "high")
+
+    if any(marker in text for marker in low_critical):
+        return {"severity": "critical", "direction": "low"}
+    if any(marker in text for marker in high_critical):
+        return {"severity": "critical", "direction": "high"}
+    if "kritisch" in text or "critical" in text:
+        direction = "low" if any(marker in text for marker in low_warning) else "high" if any(marker in text for marker in high_warning) else None
+        return {"severity": "critical", "direction": direction}
+    if any(marker in text for marker in low_warning):
+        return {"severity": "warning", "direction": "low"}
+    if any(marker in text for marker in high_warning):
+        return {"severity": "warning", "direction": "high"}
+    if "achtung" in text or "attention" in text:
+        return {"severity": "warning", "direction": None}
+    if "top" in text or "naturnah" in text or "near nature" in text:
+        return {"severity": "ok", "direction": None}
+    return {"severity": "unknown", "direction": None}
+
+
+def _normalize_ati_symbol(symbol: str) -> str:
+    """Normalize harmless punctuation used by ATI for some element symbols."""
+    normalized = symbol.strip()
+    if normalized != "Sal. total":
+        normalized = normalized.rstrip(".")
+    return normalized
+
+
+def _ati_value_state(raw_value: str) -> tuple[float | None, bool | None, bool, str | None, float | None]:
+    """Convert ATI numeric/non-detect/qualified values without inventing zeroes."""
+    normalized = raw_value.strip().casefold().replace(" ", "")
+    if normalized in {"---", "n.n.", "n.n", "n.d.", "n.d", "u.", "u"}:
+        return None, False, True, None, None
+    if normalized.startswith(("<", ">")):
+        qualifier = "less_than" if normalized.startswith("<") else "greater_than"
+        bound = _decimal(normalized[1:])
+        return None, True, False, qualifier, bound
+    return _decimal(normalized), True, True, None, None
+
+
+def _ati_unit_factor(source_unit: str, target_unit: str) -> float | None:
+    """Return a safe concentration conversion factor for ATI values."""
+    if source_unit == target_unit:
+        return 1.0
+    factors = {
+        ("mg/l", "µg/l"): 1000.0,
+        ("µg/l", "mg/l"): 0.001,
+        ("µg/l", "ng/l"): 1000.0,
+        ("ng/l", "µg/l"): 0.001,
+        ("mg/l", "ng/l"): 1_000_000.0,
+        ("ng/l", "mg/l"): 0.000001,
+    }
+    return factors.get((source_unit, target_unit))
+
+
+def _convert_ati_number(value: float, source_unit: str, target_unit: str) -> float | None:
+    """Convert a numeric ATI value into the canonical Reef ICP unit."""
+    factor = _ati_unit_factor(source_unit, target_unit)
+    if factor is None:
+        return None
+    return value * factor
+
+
+def _extract_ati_interpretation(text: str) -> str | None:
+    """Extract ATI's human-readable recommended actions section."""
+    match = re.search(
+        r"Empfohlene Handlungen\s+(.*?)\s+Empfohlene ICP Elements Dosierung",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        return None
+    value = " ".join(match.group(1).split())
+    return value or None
+
+
+def _extract_ati_product_recommendations(text: str) -> str | None:
+    """Extract ATI's ICP Elements / supplement dosing recommendation text."""
+    match = re.search(
+        r"Empfohlene ICP Elements Dosierung\s+(.*?)(?:\s+Diagramme(?:\s|$)|$)",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        return None
+    value = " ".join(match.group(1).split())
+    return value or None
+
+
+def _parse_ati_measurements(text: str) -> list[dict[str, Any]]:
+    """Parse current ATI result blocks into the provider-neutral model."""
+    lines = [" ".join(line.split()) for line in text.splitlines()]
+    lines = [line for line in lines if line]
+    measurements: list[dict[str, Any]] = []
+    current_category: str | None = None
+
+    symbol_indices: list[tuple[int, str | None]] = []
+    for index, line in enumerate(lines):
+        category = _ATI_CATEGORY_HEADINGS.get(line.casefold())
+        if category is not None:
+            current_category = category
+            continue
+        if _normalize_ati_symbol(line) in _ATI_ANALYTES:
+            symbol_indices.append((index, current_category))
+
+    for position, (index, section_category) in enumerate(symbol_indices):
+        source_symbol = lines[index]
+        symbol = _normalize_ati_symbol(source_symbol)
+        canonical = _ATI_ANALYTES[symbol]
+        key, canonical_name, canonical_category, canonical_unit = canonical
+        next_index = (
+            symbol_indices[position + 1][0]
+            if position + 1 < len(symbol_indices)
+            else min(len(lines), index + 12)
+        )
+        block = lines[index:next_index]
+
+        # A valid ATI measurement block has a measured value and a separate
+        # Idealwert/Ideal value line. Search locally instead of assuming fixed
+        # offsets because PDF text extraction order can vary slightly.
+        value_match = None
+        value_index = None
+        ideal_match = None
+        ideal_index = None
+        for offset, candidate in enumerate(block[1:8], start=1):
+            if value_match is None:
+                maybe_value = _ATI_VALUE_RE.match(candidate)
+                if maybe_value:
+                    value_match = maybe_value
+                    value_index = offset
+                    continue
+            maybe_ideal = _ATI_IDEAL_RE.match(candidate)
+            if maybe_ideal:
+                ideal_match = maybe_ideal
+                ideal_index = offset
+                break
+
+        if value_match is None or ideal_match is None or value_index is None or ideal_index is None:
+            continue
+
+        source_raw_value = value_match.group("value")
+        source_unit = _normalize_ati_unit(value_match.group("unit"), canonical_unit)
+        source_ideal_value = _decimal(ideal_match.group("value"))
+        ideal_unit = _normalize_ati_unit(ideal_match.group("unit"), source_unit)
+
+        value, detected, determined, qualifier, bound = _ati_value_state(source_raw_value)
+
+        # Normalize ATI concentrations before they reach Home Assistant so a
+        # measurement can safely share one statistic with Oceamo/Fauna Marin.
+        if value is not None:
+            converted = _convert_ati_number(value, source_unit, canonical_unit)
+            if converted is None:
+                continue
+            value = converted
+        if bound is not None:
+            converted_bound = _convert_ati_number(bound, source_unit, canonical_unit)
+            if converted_bound is None:
+                continue
+            bound = converted_bound
+
+        converted_ideal = _convert_ati_number(
+            source_ideal_value, ideal_unit, canonical_unit
+        )
+        if converted_ideal is None:
+            continue
+        ideal_value = converted_ideal
+
+        name = canonical_name
+        if value_index >= 2:
+            candidate_name = block[value_index - 1]
+            if (
+                _normalize_ati_symbol(candidate_name) not in _ATI_ANALYTES
+                and not _ATI_VALUE_RE.match(candidate_name)
+            ):
+                name = candidate_name
+
+        assessment_lines = block[ideal_index + 1 : ideal_index + 5]
+        status = _ati_status_from_text(assessment_lines)
+
+        canonical_raw_value = source_raw_value
+        if source_raw_value.strip() == "---":
+            # Canonical non-detect marker already understood by sensors/card.
+            canonical_raw_value = "n.n."
+        elif value is not None:
+            canonical_raw_value = _normalized_number(value)
+        elif bound is not None and qualifier is not None:
+            operator = "<" if qualifier == "less_than" else ">"
+            canonical_raw_value = f"{operator}{_normalized_number(bound)}"
+
+        measurement: dict[str, Any] = {
+            "key": key,
+            "name": canonical_name,
+            "source_name": name,
+            "source_symbol": source_symbol,
+            "category": (
+                "osmosis"
+                if section_category == "osmosis"
+                else canonical_category or section_category or "unknown"
+            ),
+            "raw_value": canonical_raw_value,
+            "source_raw_value": source_raw_value,
+            "unit": canonical_unit,
+            "source_unit": source_unit,
+            "target": {"type": "exact", "value": ideal_value},
+            "value": value,
+            "detected": detected,
+            "determined": determined,
+            "status": status,
+            "provider": PROVIDER_ATI,
+            "provider_name": PROVIDER_NAMES[PROVIDER_ATI],
+        }
+        if qualifier is not None:
+            measurement["value_qualifier"] = qualifier
+            measurement["value_bound"] = bound
+        measurements.append(measurement)
+
+    # Some ATI PDFs repeat navigation/summary content. Keep the first complete
+    # occurrence of each canonical key/category pair.
+    deduplicated: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for measurement in measurements:
+        identity = (measurement["category"], measurement["key"])
+        if identity in seen:
+            continue
+        seen.add(identity)
+        deduplicated.append(measurement)
+    return deduplicated
+
+
+def parse_ati_pdf(path: str | Path) -> dict[str, Any]:
+    """Parse the current ATI laboratory analysis PDF layout."""
+    try:
+        reader = PdfReader(str(path))
+    except Exception as err:  # noqa: BLE001
+        raise IcpParseError("The uploaded file is not a readable PDF.") from err
+
+    if not reader.pages:
+        raise IcpParseError("The PDF contains no pages.")
+
+    page_texts = [(page.extract_text() or "") for page in reader.pages]
+    full_text = "\n".join(page_texts)
+    normalized = " ".join(full_text.split()).casefold()
+
+    ati_brand = "ati aquaristik" in normalized or "atiaquaristik.com" in normalized
+    ati_layout = (
+        ("idealwert:" in normalized or "ideal value:" in normalized)
+        and ("barcode" in normalized or "(id:" in normalized)
+    )
+    if not (ati_brand and ati_layout):
+        raise IcpParseError("The PDF does not look like a supported ATI analysis report.")
+
+    metadata = _extract_ati_metadata(full_text)
+    measurements = _parse_ati_measurements(full_text)
+
+    if not measurements:
+        raise IcpParseError("No ATI ICP measurements were found in the report.")
+    if "analysis_number" not in metadata:
+        raise IcpParseError("The ATI analysis ID could not be found.")
+    if "analysis_date" not in metadata:
+        raise IcpParseError("The ATI evaluation date could not be found.")
+
+    return {
+        "schema_version": 2,
+        "provider": PROVIDER_ATI,
+        "provider_name": PROVIDER_NAMES[PROVIDER_ATI],
+        "report_type": metadata.get("report_type", "ati_icp"),
+        "metadata": metadata,
+        "measurements": measurements,
+        "interpretation": _extract_ati_interpretation(full_text),
+        "product_recommendations": _extract_ati_product_recommendations(full_text),
     }
 
 
@@ -829,12 +1322,26 @@ def detect_icp_provider(path: str | Path) -> str:
         "volumen aquarium in liter:",
         "dosierempfehlung elementals",
     )
+    ati_brand_markers = (
+        "atiaquaristik.com",
+        "idealwert:",
+        "barcode",
+    )
+    ati_english_markers = (
+        "atiaquaristik.com",
+        "ideal value:",
+        "barcode",
+    )
 
     matches: list[str] = []
     if all(marker in normalized for marker in oceamo_markers):
         matches.append(PROVIDER_OCEAMO)
     if all(marker in normalized for marker in fauna_marin_markers):
         matches.append(PROVIDER_FAUNA_MARIN)
+    if all(marker in normalized for marker in ati_brand_markers) or all(
+        marker in normalized for marker in ati_english_markers
+    ):
+        matches.append(PROVIDER_ATI)
 
     if len(matches) == 1:
         return matches[0]
@@ -857,6 +1364,8 @@ def parse_icp_pdf(path: str | Path) -> dict[str, Any]:
         return parse_oceamo_pdf(path)
     if provider == PROVIDER_FAUNA_MARIN:
         return parse_fauna_marin_pdf(path)
+    if provider == PROVIDER_ATI:
+        return parse_ati_pdf(path)
 
     # Kept as a defensive guard for future detector additions.
     raise UnsupportedIcpProviderError(f"Unsupported ICP provider: {provider}")

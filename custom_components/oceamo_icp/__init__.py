@@ -17,7 +17,7 @@ from .statistics import async_import_icp_statistics
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
-CARD_VERSION = "0.5.0"
+CARD_VERSION = "0.6.0"
 CARD_URL = "/oceamo_icp/oceamo-icp-card.js"
 CARD_RESOURCE_URL = f"{CARD_URL}?v={CARD_VERSION}"
 CARD_FILE = Path(__file__).parent / "www" / "oceamo-icp-card.js"
@@ -87,5 +87,5 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload an Oceamo ICP config entry."""
+    """Unload a Reef ICP config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
