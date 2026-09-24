@@ -1,4 +1,4 @@
-"""Sensor platform for Oceamo ICP."""
+"""Sensor platform for Reef ICP."""
 
 from __future__ import annotations
 
@@ -29,7 +29,45 @@ def _reports(entry: ConfigEntry) -> list[dict[str, Any]]:
 def _report_sort_key(report: dict[str, Any]) -> str:
     """Return the chronological sort key used by the integration."""
     metadata = report.get("metadata", {})
-    return metadata.get("analysis_date", "")
+    return str(
+        metadata.get("sample_taken")
+        or metadata.get("analysis_date")
+        or ""
+    )
+
+
+def _report_provider(report: dict[str, Any] | None) -> str:
+    """Return provider ID, treating legacy reports as Oceamo."""
+    if report is None:
+        return "oceamo"
+    return str(
+        report.get("provider")
+        or report.get("metadata", {}).get("provider")
+        or "oceamo"
+    )
+
+
+def _report_provider_name(report: dict[str, Any] | None) -> str:
+    """Return a display name for the report provider."""
+    if report is None:
+        return ""
+    provider = _report_provider(report)
+    return str(
+        report.get("provider_name")
+        or report.get("metadata", {}).get("provider_name")
+        or ("Oceamo" if provider == "oceamo" else provider)
+    )
+
+
+def _report_identity(report: dict[str, Any]) -> tuple[str, str]:
+    """Return a provider-specific identity for one stored report."""
+    metadata = report.get("metadata", {})
+    report_id = str(
+        metadata.get("provider_report_id")
+        or metadata.get("analysis_number")
+        or ""
+    )
+    return (_report_provider(report), report_id)
 
 
 def _latest_report(entry: ConfigEntry) -> dict[str, Any]:
@@ -42,13 +80,13 @@ def _previous_report(
     entry: ConfigEntry, latest_report: dict[str, Any]
 ) -> dict[str, Any] | None:
     """Return the report immediately before the latest one."""
-    latest_number = latest_report.get("metadata", {}).get("analysis_number")
+    latest_identity = _report_identity(latest_report)
     reports = sorted(_reports(entry), key=_report_sort_key)
 
     older_reports = [
         report
         for report in reports
-        if report.get("metadata", {}).get("analysis_number") != latest_number
+        if _report_identity(report) != latest_identity
         and _report_sort_key(report) <= _report_sort_key(latest_report)
     ]
     return older_reports[-1] if older_reports else None
@@ -87,13 +125,15 @@ def _stored_report_summary(entry: ConfigEntry) -> list[dict[str, Any]]:
                 "analysis_date": metadata.get("analysis_date"),
                 "sample_taken": metadata.get("sample_taken"),
                 "tank_type": metadata.get("tank_type"),
+                "provider": _report_provider(report),
+                "provider_name": _report_provider_name(report),
             }
         )
     return summaries
 
 
 def _status_counts(report: dict[str, Any]) -> dict[str, int]:
-    """Count Oceamo status severities."""
+    """Count provider-normalized status severities."""
     counts = Counter(
         measurement.get("status", {}).get("severity", "unknown")
         for measurement in report.get("measurements", [])
@@ -119,11 +159,11 @@ def _overall_status(report: dict[str, Any]) -> str:
 
 
 def _display_value(measurement: dict[str, Any]) -> str:
-    """Return a human-readable value including Oceamo non-detect states."""
+    """Return a human-readable value including provider non-detect states."""
     raw_value = measurement.get("raw_value")
     if raw_value == "n.n.":
         return "Nicht nachweisbar"
-    if raw_value == "n.b.":
+    if raw_value in {"n.b.", "n.g."}:
         return "Nicht bestimmt"
     if raw_value is None:
         return "Unbekannt"
@@ -192,6 +232,8 @@ def _measurement_with_history(
                 "previous_analysis_number": None,
                 "previous_analysis_date": None,
                 "previous_sample_taken": None,
+                "previous_provider": None,
+                "previous_provider_name": None,
                 "delta": None,
                 "trend": None,
             }
@@ -210,6 +252,8 @@ def _measurement_with_history(
             "previous_analysis_number": previous_metadata.get("analysis_number"),
             "previous_analysis_date": previous_metadata.get("analysis_date"),
             "previous_sample_taken": previous_metadata.get("sample_taken"),
+            "previous_provider": _report_provider(previous_report),
+            "previous_provider_name": _report_provider_name(previous_report),
             "delta": delta,
             "trend": _trend(delta),
         }
@@ -222,7 +266,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up Oceamo ICP sensors."""
+    """Set up Reef ICP sensors."""
     _migrate_analysis_number_entity(hass, entry)
 
     report = _latest_report(entry)
@@ -255,7 +299,7 @@ async def async_setup_entry(
 
 
 class OceamoBaseSensor(SensorEntity):
-    """Base sensor for imported Oceamo report data."""
+    """Base sensor for imported ICP report data."""
 
     _attr_has_entity_name = True
     _attr_should_poll = False
@@ -266,8 +310,8 @@ class OceamoBaseSensor(SensorEntity):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name=entry.title,
-            manufacturer="Oceamo",
-            model="ICP Analysis",
+            manufacturer="Reef ICP",
+            model="Multi-provider ICP Analysis",
         )
 
 
@@ -309,9 +353,17 @@ class OceamoReportSensor(OceamoBaseSensor):
             "analysis_date": metadata.get("analysis_date"),
             "sample_taken": metadata.get("sample_taken"),
             "tank_type": metadata.get("tank_type"),
+            "provider": _report_provider(self._report),
+            "provider_name": _report_provider_name(self._report),
             "previous_analysis_number": previous_metadata.get("analysis_number"),
             "previous_analysis_date": previous_metadata.get("analysis_date"),
             "previous_sample_taken": previous_metadata.get("sample_taken"),
+            "previous_provider": _report_provider(self._previous_report)
+            if self._previous_report is not None
+            else None,
+            "previous_provider_name": _report_provider_name(self._previous_report)
+            if self._previous_report is not None
+            else None,
             "status_counts": _status_counts(self._report),
             "measurements": self._measurements,
             "interpretation": self._report.get("interpretation"),
@@ -322,7 +374,7 @@ class OceamoReportSensor(OceamoBaseSensor):
 
 
 class OceamoAnalysisDateSensor(OceamoBaseSensor):
-    """Date of the latest Oceamo analysis."""
+    """Date of the latest imported ICP analysis."""
 
     _attr_name = "Analysis date"
     _attr_device_class = SensorDeviceClass.DATE
@@ -345,6 +397,8 @@ class OceamoAnalysisDateSensor(OceamoBaseSensor):
             "analysis_number": self._report.get("metadata", {}).get("analysis_number"),
             "sample_taken": self._report.get("metadata", {}).get("sample_taken"),
             "tank_type": self._report.get("metadata", {}).get("tank_type"),
+            "provider": _report_provider(self._report),
+            "provider_name": _report_provider_name(self._report),
         }
 
 
@@ -364,6 +418,8 @@ class OceamoAnalysisNumberSensor(OceamoBaseSensor):
             "analysis_date": metadata.get("analysis_date"),
             "sample_taken": metadata.get("sample_taken"),
             "tank_type": metadata.get("tank_type"),
+            "provider": _report_provider(report),
+            "provider_name": _report_provider_name(report),
         }
 
 
@@ -398,12 +454,19 @@ class OceamoMeasurementSensor(OceamoBaseSensor):
     def extra_state_attributes(self) -> dict[str, Any]:
         return {
             "category": self._measurement.get("category"),
+            "provider": _report_provider(self._report),
+            "provider_name": _report_provider_name(self._report),
             "raw_value": self._measurement.get("raw_value"),
+            "source_raw_value": self._measurement.get("source_raw_value"),
+            "source_unit": self._measurement.get("source_unit"),
+            "value_qualifier": self._measurement.get("value_qualifier"),
+            "value_bound": self._measurement.get("value_bound"),
             "display_value": _display_value(self._measurement),
             "detected": self._measurement.get("detected"),
             "determined": self._measurement.get("determined"),
             "target": self._measurement.get("target"),
             "status": self._measurement.get("status"),
+            "recommendation": self._measurement.get("recommendation"),
             "analysis_number": self._report.get("metadata", {}).get("analysis_number"),
             "analysis_date": self._report.get("metadata", {}).get("analysis_date"),
             "sample_taken": self._report.get("metadata", {}).get("sample_taken"),
@@ -421,6 +484,10 @@ class OceamoMeasurementSensor(OceamoBaseSensor):
             ),
             "previous_sample_taken": self._measurement.get(
                 "previous_sample_taken"
+            ),
+            "previous_provider": self._measurement.get("previous_provider"),
+            "previous_provider_name": self._measurement.get(
+                "previous_provider_name"
             ),
             "delta": self._measurement.get("delta"),
             "trend": self._measurement.get("trend"),

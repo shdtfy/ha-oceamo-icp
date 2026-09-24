@@ -1,4 +1,4 @@
-"""Oceamo ICP integration."""
+"""Reef ICP integration."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from .statistics import async_import_icp_statistics
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
-CARD_VERSION = "0.4.1"
+CARD_VERSION = "0.5.0"
 CARD_URL = "/oceamo_icp/oceamo-icp-card.js"
 CARD_RESOURCE_URL = f"{CARD_URL}?v={CARD_VERSION}"
 CARD_FILE = Path(__file__).parent / "www" / "oceamo-icp-card.js"
@@ -62,7 +62,7 @@ async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the Oceamo ICP integration and bundled dashboard card."""
+    """Set up the Reef ICP integration and bundled dashboard card."""
     await hass.http.async_register_static_paths(
         [
             StaticPathConfig(
@@ -80,7 +80,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Oceamo ICP from a config entry."""
+    """Set up Reef ICP from a config entry."""
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     async_import_icp_statistics(hass, entry)
     return True

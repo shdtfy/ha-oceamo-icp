@@ -1,4 +1,4 @@
-"""Historical statistics support for Oceamo ICP."""
+"""Historical statistics support for Reef ICP."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def _statistic_slug(value: str) -> str:
 
 
 def statistic_id_for(entry: ConfigEntry, measurement: dict[str, Any]) -> str:
-    """Return the external statistic ID for one measurement."""
+    """Return the external statistic ID for one normalized measurement."""
     entry_id = _statistic_slug(entry.entry_id)
     category = _statistic_slug(str(measurement.get("category", "unknown")))
     key = _statistic_slug(str(measurement.get("key", "unknown")))
@@ -104,11 +104,17 @@ def async_import_icp_statistics(hass: HomeAssistant, entry: ConfigEntry) -> None
                         mean_type=StatisticMeanType.ARITHMETIC,
                         has_sum=False,
                     ),
+                    "unit": unit,
                     "points": {},
                 },
             )
 
-            bucket["metadata"]["unit_of_measurement"] = unit
+            # Provider parsers normalize comparable analytes to one unit.
+            # Never mix a point into an existing statistic if a future parser
+            # accidentally supplies an incompatible unit.
+            if bucket["unit"] != unit:
+                continue
+
             numeric = float(value)
             bucket["points"][start] = StatisticData(
                 start=start,
