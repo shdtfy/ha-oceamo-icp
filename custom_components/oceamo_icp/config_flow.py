@@ -43,6 +43,7 @@ from .parser import (
     detect_icp_provider,
     parse_icp_pdf,
 )
+from .statistics import async_request_statistics_rebuild
 
 CONF_ANALYSIS_DATE = "analysis_date"
 CONF_PDF_FILE = "pdf_file"
@@ -334,10 +335,20 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
             except Exception:  # noqa: BLE001
                 errors["base"] = "unknown"
             else:
-                reports = _upsert_report(
-                    list(self.config_entry.options.get(CONF_REPORTS, [])),
-                    report,
+                existing_reports = list(
+                    self.config_entry.options.get(CONF_REPORTS, [])
                 )
+                replacing_existing = any(
+                    _report_identity(existing) == _report_identity(report)
+                    for existing in existing_reports
+                )
+                reports = _upsert_report(existing_reports, report)
+                if replacing_existing:
+                    async_request_statistics_rebuild(
+                        self.hass,
+                        self.config_entry,
+                        [*existing_reports, report],
+                    )
                 return self.async_create_entry(
                     title="",
                     data={CONF_REPORTS: reports},
@@ -386,10 +397,20 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
                 )
                 self._pending_pdf_path = None
                 self._pending_provider = None
-                reports = _upsert_report(
-                    list(self.config_entry.options.get(CONF_REPORTS, [])),
-                    report,
+                existing_reports = list(
+                    self.config_entry.options.get(CONF_REPORTS, [])
                 )
+                replacing_existing = any(
+                    _report_identity(existing) == _report_identity(report)
+                    for existing in existing_reports
+                )
+                reports = _upsert_report(existing_reports, report)
+                if replacing_existing:
+                    async_request_statistics_rebuild(
+                        self.hass,
+                        self.config_entry,
+                        [*existing_reports, report],
+                    )
                 return self.async_create_entry(
                     title="",
                     data={CONF_REPORTS: reports},

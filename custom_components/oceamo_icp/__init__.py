@@ -13,7 +13,11 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
-from .statistics import async_import_icp_statistics
+from .statistics import (
+    async_import_icp_statistics,
+    async_rebuild_icp_statistics,
+    async_take_statistics_rebuild_request,
+)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
@@ -82,7 +86,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Reef ICP from a config entry."""
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    async_import_icp_statistics(hass, entry)
+
+    rebuild_ids = async_take_statistics_rebuild_request(hass, entry)
+    if rebuild_ids:
+        await async_rebuild_icp_statistics(hass, entry, rebuild_ids)
+    else:
+        async_import_icp_statistics(hass, entry)
+
     return True
 
 

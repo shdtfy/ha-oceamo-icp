@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import date, datetime, time
+import logging
 import re
-from typing import Any
+from typing import Any, Iterable
 
+from homeassistant.components.recorder import get_instance
 from homeassistant.components.recorder.models import (
     StatisticData,
     StatisticMeanType,
@@ -17,6 +20,11 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.util import dt as dt_util
 
 from .const import CONF_REPORTS, DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
+
+_DATA_STATISTICS_REBUILD = "statistics_rebuild"
+_STATISTICS_CLEAR_TIMEOUT = 30
 
 
 def _statistic_slug(value: str) -> str:
@@ -33,6 +41,55 @@ def statistic_id_for(entry: ConfigEntry, measurement: dict[str, Any]) -> str:
     category = _statistic_slug(str(measurement.get("category", "unknown")))
     key = _statistic_slug(str(measurement.get("key", "unknown")))
     return f"{DOMAIN}:{entry_id}_{category}_{key}"
+
+
+def statistic_ids_for_reports(
+    entry: ConfigEntry,
+    reports: Iterable[dict[str, Any]],
+) -> set[str]:
+    """Return all Reef ICP statistic IDs referenced by the supplied reports."""
+    return {
+        statistic_id_for(entry, measurement)
+        for report in reports
+        for measurement in report.get("measurements", [])
+    }
+
+
+@callback
+def async_request_statistics_rebuild(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    reports: Iterable[dict[str, Any]],
+) -> None:
+    """Request a clear-and-rebuild of statistics on the next entry reload."""
+    statistic_ids = statistic_ids_for_reports(entry, reports)
+    if not statistic_ids:
+        return
+
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    requests = domain_data.setdefault(_DATA_STATISTICS_REBUILD, {})
+    pending = requests.setdefault(entry.entry_id, set())
+    pending.update(statistic_ids)
+
+
+@callback
+def async_take_statistics_rebuild_request(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+) -> set[str]:
+    """Consume a pending statistics rebuild request for one config entry."""
+    domain_data = hass.data.get(DOMAIN)
+    if not isinstance(domain_data, dict):
+        return set()
+
+    requests = domain_data.get(_DATA_STATISTICS_REBUILD)
+    if not isinstance(requests, dict):
+        return set()
+
+    statistic_ids = set(requests.pop(entry.entry_id, set()))
+    if not requests:
+        domain_data.pop(_DATA_STATISTICS_REBUILD, None)
+    return statistic_ids
 
 
 def _report_start(hass: HomeAssistant, report: dict[str, Any]) -> datetime | None:
@@ -109,9 +166,6 @@ def async_import_icp_statistics(hass: HomeAssistant, entry: ConfigEntry) -> None
                 },
             )
 
-            # Provider parsers normalize comparable analytes to one unit.
-            # Never mix a point into an existing statistic if a future parser
-            # accidentally supplies an incompatible unit.
             if bucket["unit"] != unit:
                 continue
 
@@ -127,3 +181,37 @@ def async_import_icp_statistics(hass: HomeAssistant, entry: ConfigEntry) -> None
         points = [bucket["points"][start] for start in sorted(bucket["points"])]
         if points:
             async_add_external_statistics(hass, bucket["metadata"], points)
+
+
+async def async_rebuild_icp_statistics(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    statistic_ids: set[str],
+) -> None:
+    """Clear stale Reef ICP statistics and rebuild them from stored reports."""
+    if not statistic_ids:
+        async_import_icp_statistics(hass, entry)
+        return
+
+    done_event = asyncio.Event()
+
+    def clear_statistics_done() -> None:
+        hass.loop.call_soon_threadsafe(done_event.set)
+
+    get_instance(hass).async_clear_statistics(
+        sorted(statistic_ids),
+        on_done=clear_statistics_done,
+    )
+
+    try:
+        async with asyncio.timeout(_STATISTICS_CLEAR_TIMEOUT):
+            await done_event.wait()
+    except TimeoutError:
+        _LOGGER.warning(
+            "Timed out while clearing Reef ICP statistics for %s; "
+            "statistics will be re-imported on the next setup",
+            entry.entry_id,
+        )
+        return
+
+    async_import_icp_statistics(hass, entry)
