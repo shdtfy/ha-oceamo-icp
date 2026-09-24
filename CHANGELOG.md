@@ -4,9 +4,13 @@
 
 ### Added
 
-- Added automatic detection and parsing for the tested **legacy TRITON ICP-OES** PDF layout (`report_type: triton_legacy_icp`).
-- Added canonical normalization for the 32 analytes present in the available 2014 TRITON report so comparable TRITON values share existing Reef ICP entities and long-term statistics.
+- Added automatic detection and parsing for the tested **legacy TRITON ICP-OES** PDF family (`report_type: triton_legacy_icp`), covering the supplied 2014 and 2015 layouts.
+- Added canonical normalization for the 32 analytes in the supplied 2014 report and 33 analytes in the supplied 2015 report so comparable TRITON values share existing Reef ICP entities and long-term statistics.
 - Added extraction of TRITON set points, deviations and aquarium volume.
+- Added support for the later legacy dosing headers `Korrektur Dosierung` / `Erhaltungs Dosierung` in addition to `Einmalige Dosierung` / `Tägliche Dosierung`.
+- Added handling for the 2015 PDF extraction quirk where the `mL` header label is attached to the first analyte row of each table.
+- Added Beryllium (`Be`) from the supplied 2015 report and mapped it to the existing shared Reef ICP Beryllium analyte.
+- Added printed legacy TRITON report-ID extraction; report `296B` now uses `296B` instead of a generated fallback ID.
 - Added direct reading of the legacy TRITON green / yellow / red **Warnampel** rectangles from the PDF drawing stream and mapped them to Reef ICP `ok` / `warning` / `critical` status levels.
 - Added per-analyte TRITON one-time and daily dosing recommendations when the report contains non-zero dosing values.
 - Added a stable generated provider report ID for legacy TRITON PDFs that do not print a report/analysis ID.
@@ -21,10 +25,12 @@
 ### Tested
 
 - Parsed the supplied real two-page TRITON ICP-OES report from 2014 with **32 measurements**.
-- Verified extraction of **25 OK, 5 warning and 2 critical** warning-light results from the report artwork.
-- Verified TRITON calcium `511.9 mg/l`, magnesium `1141 mg/l`, iodine `7.47 µg/l`, barium `74.1 µg/l` and phosphate `0.02 mg/l` against the source report.
-- Verified magnesium, boron, nickel, vanadium, zinc, manganese and iodine dosing fields from the source report.
-- Regression-tested the existing Oceamo Classic, Fauna Marin and ATI parser paths with the available local fixtures.
+- Verified extraction of **25 OK, 5 warning and 2 critical** warning-light results from the 2014 report artwork.
+- Parsed the supplied real two-page TRITON ICP-OES report `296B` from 2015 with **33 measurements**.
+- Verified extraction of **26 OK, 3 warning and 4 critical** warning-light results from the 2015 report artwork.
+- Verified the 2015 report ID `296B`, filename-derived date `2015-10-14` and the additional Beryllium measurement.
+- Verified TRITON calcium, magnesium, iodine, barium, phosphorus/phosphate and dosing fields against the supplied source reports.
+- Regression-tested Oceamo Classic (**47 measurements**), four Fauna Marin reports (**37 each**), ATI current layout (**40**) and the Oceamo ICP-MS fixture (**56**) after broadening the TRITON parser.
 
 ## 0.7.0 - Development
 

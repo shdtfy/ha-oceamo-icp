@@ -128,17 +128,18 @@ The ATI parser has been developed against a real public current-format ATI repor
 
 ### TRITON
 
-- Tested legacy TRITON ICP-OES PDF table format from 2014
-- Automatic recognition using the legacy TRITON report fingerprints
-- 32 analytes in the available real-world test report
+- Tested legacy TRITON ICP-OES PDF table formats from **2014 and 2015**
+- Automatic recognition of both tested legacy dosing-header variants
+- 32 analytes in the 2014 report and 33 analytes in the 2015 report
 - Set points, deviations and aquarium volume
 - Reads the green / yellow / red **Warnampel** directly from the PDF drawing stream
-- Preserves TRITON one-time and daily dosing recommendations per analyte
+- Preserves legacy TRITON dosing recommendations per analyte
+- Supports both `Einmalige / Tägliche Dosierung` and `Korrektur / Erhaltungs Dosierung` layouts
 - Normalizes comparable analytes into the shared Reef ICP history
-- Uses a stable generated provider report ID because this legacy PDF layout does not print an analysis ID
+- Uses the printed TRITON report ID when present (for example `296B`); otherwise generates a stable provider-local ID
 - Uses a date embedded in the PDF filename when available; otherwise falls back to a document date or PDF creation metadata
 
-The currently supported TRITON format is explicitly treated as `triton_legacy_icp`. It is based on a real two-page German TRITON ICP-OES report from 2014. Current TRITON reports may use a different layout and remain a separate compatibility target until a representative modern result is available.
+The currently supported TRITON family is explicitly treated as `triton_legacy_icp`. It has been tested against two real two-page German TRITON ICP-OES reports from 2014 and 2015. Current TRITON reports may use a different layout and remain a separate compatibility target until a representative modern result is available.
 
 ## Provider and report type
 
@@ -347,7 +348,7 @@ https://github.com/shdtfy/ha-oceamo-icp
 - [ ] Show laboratory dosing recommendations inside the card
 - [ ] Older ATI layouts and ATI Pro / Ultimate-MS variants
 - [x] Oceamo Reef ICP-MS / current ICP-MS report layout
-- [x] TRITON legacy ICP-OES (2014 report layout)
+- [x] TRITON legacy ICP-OES (tested 2014 + 2015 layouts)
 - [ ] Current TRITON ICP-OES report layout
 - [ ] Reef Factory Smart ICP-OES
 - [ ] Additional newer Oceamo report variants if the PDF layout changes
