@@ -146,7 +146,7 @@ def _measurement_map(report: dict[str, Any] | None) -> dict[tuple[str, str], dic
         return {}
 
     return {
-        _measurement_key(measurement): measurement
+        _measurent_key(measurement): measurement
         for measurement in report.get("measurements", [])
     }
 
@@ -213,7 +213,7 @@ def _measurement_with_history(
             "delta": delta,
             "trend": _trend(delta),
         }
-    )
+     )
     return enriched
 
 
@@ -237,6 +237,10 @@ async def async_setup_entry(
         )
         for measurement in report.get("measurements", [])
     ]
+    for measurement in enriched_measurements:
+        measurement["historical_statistic_id"] = statistic_id_for(
+            entry, measurement
+        )
 
     entities: list[SensorEntity] = [
         OceamoReportSensor(entry, report, previous_report, enriched_measurements),
