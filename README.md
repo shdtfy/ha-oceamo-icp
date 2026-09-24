@@ -1,175 +1,226 @@
-<p align="center">
-  <img src="custom_components/oceamo_icp/brand/logo.png"
-       alt="Oceamo ICP for Home Assistant"
-       width="900">
-</p>
+# Reef ICP for Home Assistant
 
-# Oceamo ICP for Home Assistant
+A custom Home Assistant integration for importing reef-aquarium ICP analysis reports from multiple laboratory providers.
 
-A custom Home Assistant integration for importing Oceamo ICP analysis reports directly from PDF files.
+> **Status:** Early development / beta testing.
 
-> **Status:** Early development / alpha.
+## Supported providers
+
+### Oceamo
+
+- Classic Oceamo ICP PDF format
+- Report metadata and sample timestamp
+- Measurements and target values
+- Oceamo green / yellow / red status artwork
+- `n.n.` and `n.b.`
+- Interpretation and product recommendation text
+
+### Fauna Marin
+
+- Tested Fauna Marin Reef ICP one-page PDF format
+- Sample ID, sample date, received date, aquarium volume and sample location
+- Macro elements, nutrients, trace elements and potential pollutants
+- Reference ranges
+- `n.n.` and `n.g.`
+- Per-parameter Elementals dosage recommendations
+- Water-change recommendations
+- Unit normalization for comparable cross-provider history
+
+The Fauna Marin parser has been tested against four real reports from 2022.
+
+## Multi-provider history
+
+Reports from different providers can be stored in the same aquarium.
+
+Comparable analytes are normalized to the same internal key, category and unit. This allows a history such as:
+
+```text
+Fauna Marin → Fauna Marin → Oceamo → Oceamo
+```
+
+to appear in one Home Assistant long-term statistic and in the bundled history chart.
+
+Examples of normalization:
+
+- Fauna Marin iodine: `mg/l` → `µg/l`
+- Fauna Marin ICP phosphorus: `mg/l` → `µg/l`
+- Fauna Marin silicon: `mg/l` → `µg/l`
+- Fauna Marin `Brom` is normalized to the shared `Bromid` analyte
+
+Measurements that are not directly comparable remain separate. For example, Fauna Marin elemental sulfur is not merged with Oceamo sulfate.
+
+## Importing another ICP
+
+Open **Settings → Devices & services → Reef ICP → Configure** and upload the ICP PDF.
+
+**Reef ICP detects the laboratory automatically.** The detector checks several provider-specific fingerprints in the PDF and then routes the file to the matching parser. The parser validates the detected format again before anything is stored.
+
+Currently detected automatically:
+
+- Oceamo
+- Fauna Marin
+
+If no supported provider can be identified, the import stops instead of guessing. A report is replaced only when both its provider and provider report ID match an already stored report.
 
 ## What it currently does
 
 - Install as a HACS custom repository
-- Add **Oceamo ICP** under **Settings → Devices & services**
-- Upload an Oceamo PDF directly in the Home Assistant UI
-- Parse report metadata, measurements, target values and Oceamo status icons
-- Keep `n.n.` ("not detectable") and `n.b.` ("not determined") separate from numeric zero
-- Create one Home Assistant sensor per ICP parameter
-- Create dedicated sensors for the latest analysis date and analysis number
-- Store multiple imported reports per aquarium
-- Import additional PDFs from the integration's **Configure** / options flow
+- Add **Reef ICP** under **Settings → Devices & services**
+- Import ICP PDFs directly in Home Assistant
+- Store up to 100 reports per aquarium
+- Keep reports in chronological sample order
 - Keep the newest report as the current sensor state
-- Import historic numeric ICP values as Home Assistant external long-term statistics using the original sample timestamp
+- Create one sensor per parameter in the newest report
+- Create `ICP Status`, `Analysis date` and `Analysis number` sensors
+- Preserve non-numeric laboratory states instead of converting them to zero
+- Import historic numeric values as Home Assistant external long-term statistics
 - Compare the newest ICP with the immediately previous stored ICP
-- Bundle and automatically load a dedicated **Oceamo ICP Card** for Home Assistant dashboards
-- Open an interactive history chart by tapping an individual ICP measurement
-- Expose one `ICP Status` entity containing the complete latest report, status summary, comparison data and statistic IDs for the custom card
-
-The parser currently targets the classic Oceamo report format used by analysis **OC188727** from 2022. Support for newer Oceamo and ICP-MS report formats will be added separately.
-
-## Installation during development
-
-1. Open HACS.
-2. Add this repository as a custom repository:
-   `https://github.com/shdtfy/ha-oceamo-icp`
-3. Select category **Integration**.
-4. Install **Oceamo ICP**.
-5. Restart Home Assistant.
-6. Go to **Settings → Devices & services → Add integration**.
-7. Search for **Oceamo ICP**.
-8. Enter an aquarium name and upload an Oceamo PDF.
-
-Additional analyses can later be imported through **Configure** on the integration entry.
+- Combine comparable values from different providers in the same history
+- Bundle and automatically load the **Reef ICP Card**
+- Open an interactive history chart by tapping a measurement
+- Show the provider for the current report, previous report and selected history points
 
 ## Current entities
 
 For each aquarium, the integration creates:
 
-- `ICP Status` – overall status plus the complete latest report and comparison data as attributes
-- `Analysis date` – date of the latest imported analysis
-- `Analysis number` – Oceamo analysis number of the latest imported report
-- One sensor for each parameter in the latest report
+- `ICP Status`
+- `Analysis date`
+- `Analysis number`
+- one sensor for every measurement in the latest report
 
-Parameters from the RO/DI water check use their own unique IDs, so names such as copper or zinc can exist both for aquarium water and RO/DI water.
+`ICP Status` contains the complete normalized measurement list, provider metadata, previous-analysis comparison, stored-report summary and statistic IDs used by the bundled card.
+
+## Fauna Marin recommendations
+
+Where present in the PDF, Fauna Marin measurement attributes can contain a structured recommendation.
+
+Example dosage:
+
+```yaml
+recommendation:
+  type: dose
+  amount_ml: 2.7
+  days: 2
+  product: Elementals Trace I
+```
+
+Example water-change recommendation:
+
+```yaml
+recommendation:
+  type: water_change
+  product: Elementals Trace Ba
+```
+
+These are imported as laboratory-provided recommendations. Reef ICP does not currently control dosing equipment.
+
+## Status handling
+
+Oceamo status levels come directly from the status artwork embedded in the tested classic PDF.
+
+The tested Fauna Marin format does not contain equivalent Oceamo-style severity icons. Reef ICP therefore derives a conservative display status from Fauna Marin's published reference range:
+
+- inside reference range → `ok`
+- outside reference range → `warning`
+- insufficient information → `unknown`
+
+Fauna Marin values are not automatically labeled `critical`.
 
 ## Historical values
 
-Numeric measurements from all stored reports are also imported into Home Assistant as external long-term statistics.
+Numeric measurements from all stored reports are imported as Home Assistant external long-term statistics.
 
-The original Oceamo sample timestamp is used as the basis for the historic point. Home Assistant requires external statistics to use hourly timestamps, so the timestamp is rounded down to the full hour for the statistics database.
+The original sample timestamp is used when available. Date-only samples are placed at local noon, then rounded to the full hour as required by Home Assistant external statistics.
 
-Values such as `n.n.` and `n.b.` are never converted to `0`.
+Provider parsers normalize comparable measurements before statistics are imported. A safety check prevents points with mismatching units from being merged into the same statistic.
 
-## Comparison with the previous ICP
+`n.n.`, `n.b.` and `n.g.` are never converted to numeric zero.
 
-When at least two reports are stored, every measurement from the newest report is matched to the same parameter in the immediately previous report.
+## Reef ICP dashboard card
 
-The current measurement exposes attributes such as:
+The bundled card is still registered internally as:
 
 ```yaml
-has_previous: true
-previous_value: 6.83
-previous_raw_value: "6,83"
-previous_display_value: "6,83 dKH"
-previous_analysis_number: OC186791
-previous_analysis_date: "2022-01-22"
-previous_sample_taken: "2022-01-18T20:00:00"
-delta: 3.94
-trend: up
+type: custom:oceamo-icp-card
 ```
 
-If either the current or previous value is non-numeric (`n.n.` / `n.b.`), `delta` and `trend` remain empty instead of inventing a numeric value.
+The internal tag and integration domain are intentionally kept for backward compatibility with existing installations and dashboards.
 
-The `ICP Status` entity contains the same enriched measurement data so the dashboard card can consume the complete analysis from a single entity.
+In the Home Assistant card picker it appears as **Reef ICP Card**.
 
-## Oceamo ICP dashboard card
-
-Version 0.3.0 adds the first bundled Lovelace card.
-
-The card is served directly by the integration and automatically loaded by the Home Assistant frontend. No separate HACS frontend repository and no manual Lovelace resource entry are required.
-
-After installing/updating the integration and restarting Home Assistant:
-
-1. Open a dashboard.
-2. Enter edit mode.
-3. Add a card.
-4. Search for **Oceamo ICP Card**.
-5. Select the `ICP Status` sensor of the aquarium.
-
-The card currently shows:
+The card shows:
 
 - aquarium name
-- latest analysis number and date
-- overall status
-- green / yellow / red status counts
-- previous analysis number and date
-- collapsible Oceamo categories
-- per-category green / yellow / red status summaries
+- provider
+- latest analysis/report ID and date
+- overall status and status counts
+- previous analysis and provider
+- collapsible categories
 - current measurement
-- target value / target range
+- target / reference range
 - previous measurement
 - change and trend direction
-- translated handling of `n.n.` and `n.b.`
-- clickable measurement rows with a dedicated history view
+- history availability
+- interactive long-term history
+- provider and report ID for selected history points
 
-### Measurement history
+## Backward compatibility
 
-Starting with version 0.4.0, measurements with Home Assistant long-term statistics can be opened directly from the Oceamo ICP Card.
+The visible project name is now **Reef ICP**.
 
-Tap a measurement row to open its history view. The history card loads the external Home Assistant statistics for that parameter and shows:
+The internal Home Assistant domain remains:
 
-- all imported numeric ICP values over time
-- one point for each available historic ICP statistic
-- current and previous values
-- absolute change from the previous ICP
-- the Oceamo target value or target range
-- a target line or target range directly in the graph
-- selectable data points with date, analysis number and measured value
-
-Historic `n.n.` and `n.b.` values remain non-numeric and are therefore not plotted as artificial zero values.
-
-Manual YAML configuration is also possible:
-
-```yaml
-type: custom:oceamo-icp-card
-entity: sensor.my_aquarium_icp_status
-show_previous: true
+```text
+oceamo_icp
 ```
 
-Optional custom title:
+This is deliberate. Changing the domain would break existing config entries, entity unique IDs, external statistic IDs and dashboard resources.
 
-```yaml
-type: custom:oceamo-icp-card
-entity: sensor.my_aquarium_icp_status
-title: Mein Riff
-show_previous: true
+The repository URL also remains unchanged for now:
+
+```text
+https://github.com/shdtfy/ha-oceamo-icp
 ```
+
+## Installation during development
+
+1. Open HACS.
+2. Add this repository as a custom **Integration** repository:
+   `https://github.com/shdtfy/ha-oceamo-icp`
+3. Install **Reef ICP**.
+4. Restart Home Assistant.
+5. Go to **Settings → Devices & services → Add integration**.
+6. Search for **Reef ICP**.
+7. Enter an aquarium name and upload the first ICP PDF. Reef ICP detects the provider automatically.
 
 ## Roadmap
 
 - [x] Classic Oceamo PDF parser
-- [x] Oceamo status icon extraction for the tested classic report
-- [x] Config flow with PDF upload
-- [x] Sensor entities
-- [x] Multiple stored reports
-- [x] Long-term statistics using the original sample timestamp
-- [x] Analysis number as a dedicated entity
-- [x] Comparison with the previous stored ICP
-- [x] First bundled Oceamo ICP dashboard card
-- [x] Card polish and per-category status summaries
-- [x] Clickable per-measurement history view with long-term statistics
-- [ ] More history display options
+- [x] Oceamo status artwork extraction
+- [x] Fauna Marin Reef ICP PDF parser
+- [x] Automatic provider detection during import
+- [x] Cross-provider normalized history
+- [x] Long-term statistics
+- [x] Previous-ICP comparison
+- [x] Bundled dashboard card
+- [x] Interactive measurement history
+- [ ] Show Oceamo interpretation / evaluation text inside the card
+- [ ] Show laboratory dosing recommendations inside the card
+- [ ] More providers such as ATI
 - [ ] Newer Oceamo / ICP-MS report formats
-- [ ] Automated tests and release workflow
+- [ ] Parser regression tests in the repository
 - [ ] First tagged HACS release
+- [ ] Optional dosing assistant with explicit safeguards and user approval
 
 ## Privacy
 
-Oceamo reports can contain names, customer numbers and other personal information. Reports are processed locally by Home Assistant. Test reports containing personal information are **not** included in this repository.
+ICP reports can contain names, customer numbers and other personal information. Reports are processed locally by Home Assistant.
+
+Private test reports are not included in the public repository.
 
 ## Disclaimer
 
-This project is an independent community integration and is not affiliated with or endorsed by Oceamo.
+Reef ICP is an independent community project and is not affiliated with or endorsed by Oceamo, Fauna Marin or any other ICP laboratory.
+
+Laboratory reference ranges and recommendations are imported from the supplied reports. Reef ICP does not replace professional aquarium husbandry advice.

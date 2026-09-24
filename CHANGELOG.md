@@ -1,11 +1,41 @@
 # Changelog
 
+## 0.5.0 - Development
+
+### Added
+
+- Renamed the visible integration and dashboard card to **Reef ICP** while retaining the legacy `oceamo_icp` Home Assistant domain for backward compatibility.
+- Added automatic provider detection to the initial setup and Configure/options import flow.
+- Added **Fauna Marin** as the second supported ICP provider.
+- Provider detection uses multiple provider-specific PDF fingerprints and each parser validates the detected format again.
+- Added parsing for the tested one-page Fauna Marin Reef ICP PDF format.
+- Added Fauna Marin sample metadata including sample ID, sample date, received date, aquarium volume and sample location.
+- Added parsing of Fauna Marin per-parameter Elementals dosage recommendations and water-change recommendations.
+- Added normalized provider metadata to reports, measurements, sensors and stored-report summaries.
+- Added provider labels to the dashboard header, previous-analysis row and history-point details.
+- Added cross-provider analyte normalization so directly comparable measurements can share the same long-term statistic.
+- Added unit normalization for Fauna Marin iodine, ICP phosphorus and silicon.
+
+### Changed
+
+- Reports are now deduplicated by provider plus provider report ID instead of report number alone.
+- Reports are sorted by sample timestamp when available, with report date as fallback.
+- Fauna Marin reference ranges are conservatively mapped to `ok`, `warning` or `unknown`; the parser does not invent a `critical` level.
+- External statistic import now refuses to merge points with incompatible units.
+- Updated the bundled card and integration version to `0.5.0`.
+
+### Compatibility
+
+- The Home Assistant domain remains `oceamo_icp`.
+- The custom card tag remains `custom:oceamo-icp-card`.
+- Existing Oceamo config entries, entity unique IDs, statistics and dashboards therefore remain compatible.
+
 ## 0.4.1 - Development
 
 ### Fixed
 
-- Fixed a typo in the measurement-map helper that prevented the `ICP Status` sensor from exposing its measurement list after updating to version 0.4.0.
-- Restored the dashboard card data source so measurement rows and the new history view can load normally.
+- Fixed a typo in the measurement-map helper that caused the Oceamo sensor platform to fail during setup after updating to version 0.4.0.
+- Restored all Oceamo sensor entities and the `ICP Status` dashboard-card data source.
 - Updated the bundled dashboard card and integration version to `0.4.1`.
 
 ## 0.4.0 - Development
