@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.5 - Development
+
+### Added
+
+- Added comparison data between the latest ICP and the immediately previous stored ICP.
+- Each current measurement now exposes `has_previous`, `previous_value`, `previous_raw_value`, `previous_display_value`, previous report metadata, `delta` and `trend`.
+- The `ICP Status` sensor now exposes the same enriched measurement list for the future dashboard card.
+- Added previous analysis metadata to the `ICP Status` sensor.
+
+### Changed
+
+- Updated the README to reflect long-term statistics, the analysis-number entity and historical comparison support.
+
 ## 0.2.4 - Development
 
 ### Fixed
