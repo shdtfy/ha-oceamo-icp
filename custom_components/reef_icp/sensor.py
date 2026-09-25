@@ -170,6 +170,52 @@ def _stored_report_summary(entry: ConfigEntry) -> list[dict[str, Any]]:
     return summaries
 
 
+def _laboratory_recommendations(
+    report: dict[str, Any],
+    measurements: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Build an explicit frontend payload for recommendations from the PDF.
+
+    Keeping this separate from the generic ``measurements`` attribute gives the
+    dashboard card a stable contract for laboratory-provided dosing advice.
+    """
+    items: list[dict[str, Any]] = []
+
+    for measurement in measurements:
+        recommendation = measurement.get("recommendation")
+        if not isinstance(recommendation, dict):
+            continue
+
+        items.append(
+            {
+                "key": measurement.get("key"),
+                "name": measurement.get("name"),
+                "category": measurement.get("category"),
+                "current": measurement.get("value"),
+                "raw_value": measurement.get("raw_value"),
+                "unit": measurement.get("unit"),
+                "target": measurement.get("target"),
+                "status": measurement.get("status"),
+                "recommendation": dict(recommendation),
+            }
+        )
+
+    report_text = report.get("product_recommendations")
+    if not isinstance(report_text, str) or not report_text.strip():
+        report_text = None
+
+    if not items and report_text is None:
+        return None
+
+    return {
+        "provider": _report_provider(report),
+        "provider_name": _report_provider_name(report),
+        "report_type": _report_type(report),
+        "items": items,
+        "report_text": report_text.strip() if report_text else None,
+    }
+
+
 def _status_counts(report: dict[str, Any]) -> dict[str, int]:
     """Count provider-normalized status severities."""
     counts = Counter(
@@ -469,6 +515,10 @@ class ReefReportSensor(ReefBaseSensor):
             "measurements": self._measurements,
             "interpretation": self._report.get("interpretation"),
             "product_recommendations": self._report.get("product_recommendations"),
+            "laboratory_recommendations": _laboratory_recommendations(
+                self._report,
+                self._measurements,
+            ),
             "supply_recommendations": supply_recommendations,
             "stored_report_count": len(_reports(self._entry)),
             "stored_reports": _stored_report_summary(self._entry),
