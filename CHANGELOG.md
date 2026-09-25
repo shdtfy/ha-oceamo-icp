@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.1 - Development
+
+### Changed
+
+- Moved the expandable supply recommendations below the measurement categories and the laboratory interpretation to the bottom of the card.
+- Show the calculated daily concentration increase alongside split correction doses.
+- Show a precise measuring reminder for correction doses below 1 ml per day.
+- Updated the dashboard card cache version to `0.10.1`.
+
 ## 0.10.0 - Development
 
 ### Added
