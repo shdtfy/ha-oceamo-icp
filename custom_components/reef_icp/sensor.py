@@ -295,7 +295,17 @@ def _analysis_change_items(
     current_report: dict[str, Any],
     previous_report: dict[str, Any] | None,
 ) -> list[dict[str, Any]]:
-    """Return status transitions between the newest and previous ICP."""
+    """Compare newest and previous values against one shared current target.
+
+    Provider status labels are intentionally not compared here. Different
+    laboratories can assign different severities or reference ranges to the
+    same concentration. For a cross-provider comparison, both numeric values
+    are therefore evaluated against the *current report's* normalized target.
+
+    Non-numeric states such as ``n.n.``, ``n.g.`` or ``---`` are not treated as
+    improvements or deteriorations because their distance from a numeric target
+    cannot be established reliably.
+    """
     if previous_report is None:
         return []
 
@@ -308,32 +318,43 @@ def _analysis_change_items(
         if previous is None:
             continue
 
+        current_value = current.get("value")
+        previous_value = previous.get("value")
+        target = current.get("target")
+
+        current_distance = _target_distance(current_value, target)
+        previous_distance = _target_distance(previous_value, target)
+
+        # Without two numeric, target-comparable values there is no defensible
+        # cross-provider improvement/worsening judgment.
+        if current_distance is None or previous_distance is None:
+            continue
+
+        epsilon = max(
+            abs(float(current_distance)),
+            abs(float(previous_distance)),
+            1.0,
+        ) * 1e-9
+        current_in_target = current_distance <= epsilon
+        previous_in_target = previous_distance <= epsilon
+
+        if previous_in_target and not current_in_target:
+            kind = "new_issue"
+        elif not previous_in_target and current_in_target:
+            kind = "resolved"
+        elif not previous_in_target and not current_in_target:
+            if current_distance < previous_distance - epsilon:
+                kind = "improved"
+            elif current_distance > previous_distance + epsilon:
+                kind = "worsened"
+            else:
+                continue
+        else:
+            # Both values are inside the current target range.
+            continue
+
         current_severity = _severity(current)
         previous_severity = _severity(previous)
-        current_rank = _SEVERITY_RANK.get(current_severity)
-        previous_rank = _SEVERITY_RANK.get(previous_severity)
-
-        # Unknown states are deliberately excluded from status-transition
-        # judgments. A provider may simply not have enough information.
-        if current_rank is None or previous_rank is None:
-            continue
-        if current_rank == previous_rank:
-            continue
-
-        if previous_severity == "ok" and current_severity in {
-            "warning",
-            "critical",
-        }:
-            kind = "new_issue"
-        elif current_severity == "ok" and previous_severity in {
-            "warning",
-            "critical",
-        }:
-            kind = "resolved"
-        elif current_rank > previous_rank:
-            kind = "worsened"
-        else:
-            kind = "improved"
 
         items.append(
             {
@@ -342,27 +363,18 @@ def _analysis_change_items(
                 "name": current.get("name"),
                 "category": current.get("category"),
                 "unit": current.get("unit"),
-                "current": current.get("value"),
+                "current": current_value,
                 "current_raw_value": current.get("raw_value"),
-                "previous": previous.get("value"),
+                "previous": previous_value,
                 "previous_raw_value": previous.get("raw_value"),
-                "delta": _delta(
-                    current.get("value"),
-                    previous.get("value"),
-                ),
+                "delta": _delta(current_value, previous_value),
                 "current_severity": current_severity,
                 "previous_severity": previous_severity,
                 "status": current.get("status"),
                 "previous_status": previous.get("status"),
-                "target": current.get("target"),
-                "current_target_distance": _target_distance(
-                    current.get("value"),
-                    current.get("target"),
-                ),
-                "previous_target_distance": _target_distance(
-                    previous.get("value"),
-                    current.get("target"),
-                ),
+                "target": target,
+                "current_target_distance": current_distance,
+                "previous_target_distance": previous_distance,
             }
         )
 

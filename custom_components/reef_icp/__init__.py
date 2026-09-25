@@ -21,7 +21,7 @@ from .statistics import (
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
-CARD_VERSION = "0.11.8"
+CARD_VERSION = "0.11.9"
 CARD_URL = "/reef_icp/reef-icp-card.js"
 CARD_RESOURCE_URL = f"{CARD_URL}?v={CARD_VERSION}"
 CARD_FILE = Path(__file__).parent / "www" / "reef-icp-card.js"
