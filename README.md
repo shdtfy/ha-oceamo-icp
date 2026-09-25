@@ -317,6 +317,19 @@ recommendation:
 
 These are imported as laboratory-provided recommendations. Reef ICP does not currently control dosing equipment.
 
+## Laboratory recommendations in the dashboard card
+
+Reef ICP keeps laboratory instructions visually separate from its own supply-system calculations.
+
+When the imported PDF contains recommendation data, the card adds a collapsed **Recommendations from the laboratory report** panel below the measurements. Depending on the laboratory format, it can show:
+
+- Fauna Marin row-level dosage recommendations with the analyte, amount, duration and named Elementals product
+- Fauna Marin water-change recommendations and the product named in the report
+- legacy TRITON correction/one-time and maintenance/daily dosing values, including the report aquarium volume when available
+- Oceamo or ATI report-level product recommendation text when the PDF contains such a section
+
+These values are displayed as imported laboratory information. Reef ICP does not recalculate them. The separate **Recommendations for your supply system** panel remains the provider-independent Reef ICP calculation based on the aquarium's stored net volume and selected dosing system.
+
 ## Status handling
 
 Oceamo status levels come directly from the rating artwork embedded in the report. Reef ICP recognizes the tested classic and current ICP-MS icon variants by Oceamo's green / yellow / red status colors and arrow direction, while retaining exact known classic icon hashes as a compatibility path.
@@ -415,7 +428,7 @@ Version `0.11.0` completed the project-wide namespace rename. Existing test inst
 - [x] Reef ICP project branding
 - [x] README screenshots
 - [x] Show laboratory interpretation / evaluation text inside the card when present
-- [ ] Show laboratory dosing recommendations inside the card
+- [x] Show laboratory dosing recommendations inside the card
 - [ ] Older ATI layouts and ATI Pro / Ultimate-MS variants
 - [x] Oceamo Reef ICP-MS / current ICP-MS report layout
 - [x] TRITON legacy ICP-OES (tested 2014 + 2015 layouts)

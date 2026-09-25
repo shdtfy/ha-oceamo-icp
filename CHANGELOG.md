@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.11.5 - Development
+
+### Added
+
+- Added a separate expandable **Recommendations from the laboratory report** panel to the bundled Reef ICP dashboard card.
+- Structured per-parameter recommendations from **Fauna Marin** are shown with the analyte, reported dose/duration or water-change advice, and the product named in the PDF.
+- Structured legacy **TRITON** dosing data is shown with correction/one-time and maintenance/daily amounts plus the report aquarium volume where available.
+- Report-level product recommendation text imported from **Oceamo** or **ATI** is displayed when the source PDF contains such a section.
+- The laboratory panel is explicitly separated from Reef ICP's provider-independent **Recommendations for your supply system** so imported laboratory instructions are never presented as Reef ICP calculations.
+
+### Changed
+
+- Updated the integration and bundled dashboard card cache version to `0.11.5`.
+- Marked laboratory recommendation display as implemented in the README roadmap.
+
 ## 0.11.4 - Development
 
 ### Added
