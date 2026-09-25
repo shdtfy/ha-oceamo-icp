@@ -1,5 +1,6 @@
+<<<<<<< HEAD
 {
-  "domain": "oceamo_icp",
+  "domain": "reef_icp",
   "name": "Reef ICP",
   "codeowners": [
     "@shdtfy"
@@ -12,11 +13,35 @@
     "http",
     "lovelace"
   ],
-  "documentation": "https://github.com/shdtfy/ha-oceamo-icp",
+  "documentation": "https://github.com/shdtfy/ha-reef-icp",
   "integration_type": "service",
-  "issue_tracker": "https://github.com/shdtfy/ha-oceamo-icp/issues",
+  "issue_tracker": "https://github.com/shdtfy/ha-reef-icp/issues",
   "requirements": [
     "pypdf==6.19.0"
   ],
-  "version": "0.10.2"
+  "version": "0.11.0"
 }
+=======
+{
+  "domain": "reef_icp",
+  "name": "Reef ICP",
+  "codeowners": [
+    "@shdtfy"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "file_upload",
+    "recorder",
+    "frontend",
+    "http",
+    "lovelace"
+  ],
+  "documentation": "https://github.com/shdtfy/ha-reef-icp",
+  "integration_type": "service",
+  "issue_tracker": "https://github.com/shdtfy/ha-reef-icp/issues",
+  "requirements": [
+    "pypdf==6.19.0"
+  ],
+  "version": "0.11.0"
+}
+>>>>>>> d61cfae3a38c64dc44400da71e31eec24c924b60

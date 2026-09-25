@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="custom_components/oceamo_icp/brand/logo.png"
+  <img src="custom_components/reef_icp/brand/logo.png"
        alt="Reef ICP for Home Assistant"
        width="900">
 </p>
@@ -336,10 +336,10 @@ Provider parsers normalize comparable measurements before statistics are importe
 The bundled card is still registered internally as:
 
 ```yaml
-type: custom:oceamo-icp-card
+type: custom:reef-icp-card
 ```
 
-The internal tag and integration domain are intentionally kept for backward compatibility with existing installations and dashboards.
+Reef ICP now uses the Reef ICP namespace throughout the integration, dashboard card and Home Assistant domain.
 
 In the Home Assistant card picker it appears as **Reef ICP Card**.
 
@@ -366,7 +366,7 @@ The visible project name is now **Reef ICP**.
 The internal Home Assistant domain remains:
 
 ```text
-oceamo_icp
+reef_icp
 ```
 
 This is deliberate. Changing the domain would break existing config entries, entity unique IDs, external statistic IDs and dashboard resources.
@@ -374,14 +374,14 @@ This is deliberate. Changing the domain would break existing config entries, ent
 The repository URL also remains unchanged for now:
 
 ```text
-https://github.com/shdtfy/ha-oceamo-icp
+https://github.com/shdtfy/ha-reef-icp
 ```
 
 ## Installation during development
 
 1. Open HACS.
 2. Add this repository as a custom **Integration** repository:
-   `https://github.com/shdtfy/ha-oceamo-icp`
+   `https://github.com/shdtfy/ha-reef-icp`
 3. Install **Reef ICP**.
 4. Restart Home Assistant.
 5. Go to **Settings → Devices & services → Add integration**.

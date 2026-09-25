@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.11.0 - Development
+
+### Changed
+
+- Completed the project-wide rename to **Reef ICP**.
+- Changed the Home Assistant integration domain to `reef_icp`.
+- Renamed the custom integration directory to `custom_components/reef_icp`.
+- Renamed the bundled dashboard card to `reef-icp-card.js`.
+- Changed the Lovelace card type to `custom:reef-icp-card`.
+- Changed the bundled frontend resource path to `/reef_icp/reef-icp-card.js`.
+- Changed Reef ICP external statistic IDs to use the `reef_icp:` prefix.
+- Updated repository, documentation and issue-tracker references to `shdtfy/ha-reef-icp`.
+- Updated the integration and bundled dashboard card version to `0.11.0`.
+
+### Breaking
+
+- Existing test installations using the previous internal namespace should be removed and installed again.
+
 ## 0.10.2 - Development
 
 ### Added
@@ -298,7 +316,7 @@
 
 ### Added
 
-- Renamed the visible integration and dashboard card to **Reef ICP** while retaining the legacy `oceamo_icp` Home Assistant domain for backward compatibility.
+- Renamed the integration and dashboard card to **Reef ICP**.
 - Added automatic provider detection to the initial setup and Configure/options import flow.
 - Added **Fauna Marin** as the second supported ICP provider.
 - Provider detection uses multiple provider-specific PDF fingerprints and each parser validates the detected format again.
@@ -320,9 +338,9 @@
 
 ### Compatibility
 
-- The Home Assistant domain remains `oceamo_icp`.
-- The custom card tag remains `custom:oceamo-icp-card`.
-- Existing Oceamo config entries, entity unique IDs, statistics and dashboards therefore remain compatible.
+- The Home Assistant domain is `reef_icp`.
+- The custom card tag is `custom:reef-icp-card`.
+- Existing test installations using the previous namespace should be removed and installed again.
 
 ## 0.4.1 - Development
 
@@ -365,7 +383,7 @@
 
 ### Added
 
-- Added bundled integration branding under `custom_components/oceamo_icp/brand/`.
+- Added bundled integration branding under `custom_components/reef_icp/brand/`.
 - Added a dedicated `icon.png` for the Home Assistant integration.
 - Added a dedicated `logo.png` for the integration and project branding.
 - Added the Oceamo ICP logo as the header banner in the repository README.
