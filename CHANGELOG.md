@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.10.2 - Development
+
+### Added
+
+- Added ATI ICP Element correction support for **Barium**, **Selen** and **Vanadium**.
+- Barium uses ATI's published strength of 1 ml per 100 l for +1 µg/l.
+- Selen uses ATI's published strength of 1 ml per 100 l for +0.5 µg/l.
+- Vanadium uses ATI's published strength of 1 ml per 100 l for +5 µg/l.
+
+### Changed
+
+- Cross-checked all implemented ATI ICP Element product strengths against ATI's current ICP Elements documentation.
+- ATI corrections continue to use total correction amounts only; no automatic multi-day split limit is implemented for ATI.
+- Updated the integration version to `0.10.2`.
+
 ## 0.10.1 - Development
 
 ### Changed
