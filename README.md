@@ -163,7 +163,7 @@ Built-in presets currently include **Fauna Marin Balling Light**, **ATI Essentia
 
 These settings remain attached to the aquarium when additional reports from Oceamo, Fauna Marin, ATI, TRITON or future providers are imported. Existing aquariums can edit the profile through **Configure → Aquarium settings**.
 
-This is the foundation for a provider-independent recommendation engine: laboratory measurements stay normalized by Reef ICP, while future dosing recommendations can be generated for the aquarium's chosen supply system and net water volume rather than blindly copying the laboratory's product recommendations.
+This is the foundation for a provider-independent recommendation engine: laboratory measurements stay normalized by Reef ICP, while dosing recommendations can be generated for the aquarium's chosen supply system and net water volume rather than blindly copying the laboratory's product recommendations.
 
 ## Supply-system recommendations
 
@@ -190,7 +190,6 @@ When the manufacturer publishes a maximum daily increase, Reef ICP also calculat
 Calculated amounts are **correction doses**, not permanent daily maintenance doses. Balling Light, ATI Essentials pro, Oceamo DUO and TRITON Core7 remain consumption-driven systems for ongoing daily dosing.
 
 Manufacturer formulations can change. Reef ICP therefore surfaces the manufacturer source used for each recommendation and users should confirm the current product label before dosing.
-
 
 ## Multi-provider history
 
@@ -333,13 +332,13 @@ Provider parsers normalize comparable measurements before statistics are importe
 
 ## Reef ICP dashboard card
 
-The bundled card is still registered internally as:
+The bundled card is registered internally as:
 
 ```yaml
 type: custom:reef-icp-card
 ```
 
-Reef ICP now uses the Reef ICP namespace throughout the integration, dashboard card and Home Assistant domain.
+Reef ICP uses the Reef ICP namespace throughout the integration, dashboard card and Home Assistant domain.
 
 In the Home Assistant card picker it appears as **Reef ICP Card**.
 
@@ -359,23 +358,23 @@ The card shows:
 - interactive long-term history
 - provider, report type and report ID for selected history points
 
-## Backward compatibility
+## Project namespace
 
-The visible project name is now **Reef ICP**.
-
-The internal Home Assistant domain remains:
+The Home Assistant integration domain is:
 
 ```text
 reef_icp
 ```
 
-This is deliberate. Changing the domain would break existing config entries, entity unique IDs, external statistic IDs and dashboard resources.
+Reef ICP uses this namespace for config entries, entities, external statistics and dashboard resources.
 
-The repository URL also remains unchanged for now:
+The repository URL is:
 
 ```text
 https://github.com/shdtfy/ha-reef-icp
 ```
+
+Version `0.11.0` completed the project-wide namespace rename. Existing test installations that used the previous internal namespace should be removed and installed again.
 
 ## Installation during development
 
