@@ -2143,13 +2143,16 @@ def detect_icp_provider(path: str | Path) -> str:
     )
 
 
-def parse_icp_pdf(
+def parse_icp_pdf_for_provider(
     path: str | Path,
+    provider: str,
     analysis_date_override: str | None = None,
 ) -> dict[str, Any]:
-    """Detect the provider and dispatch an uploaded PDF automatically."""
-    provider = detect_icp_provider(path)
+    """Parse a PDF with one explicitly selected provider parser.
 
+    Every provider parser validates its own report format, so a manual provider
+    override cannot silently import a PDF that does not match that provider.
+    """
     if provider == PROVIDER_OCEAMO:
         return parse_oceamo_pdf(path, analysis_date_override)
     if provider == PROVIDER_FAUNA_MARIN:
@@ -2159,5 +2162,13 @@ def parse_icp_pdf(
     if provider == PROVIDER_TRITON:
         return parse_triton_legacy_pdf(path, analysis_date_override)
 
-    # Kept as a defensive guard for future detector additions.
     raise UnsupportedIcpProviderError(f"Unsupported ICP provider: {provider}")
+
+
+def parse_icp_pdf(
+    path: str | Path,
+    analysis_date_override: str | None = None,
+) -> dict[str, Any]:
+    """Detect the provider and dispatch an uploaded PDF automatically."""
+    provider = detect_icp_provider(path)
+    return parse_icp_pdf_for_provider(path, provider, analysis_date_override)
