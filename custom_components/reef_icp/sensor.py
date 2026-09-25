@@ -20,7 +20,13 @@ from .const import (
     CONF_STOCKING_PROFILE,
     CONF_SUPPLY_SYSTEM,
     DOMAIN,
+    STOCKING_PROFILE_FISH_ONLY,
+    STOCKING_PROFILE_LPS_DOMINANT,
+    STOCKING_PROFILE_MIXED_REEF,
     STOCKING_PROFILE_NAMES,
+    STOCKING_PROFILE_OTHER,
+    STOCKING_PROFILE_SOFT_CORAL_DOMINANT,
+    STOCKING_PROFILE_SPS_DOMINANT,
     SUPPLY_SYSTEM_NAMES,
 )
 from .recommendations import build_supply_recommendations
@@ -551,6 +557,189 @@ def _analysis_insights(
     }
 
 
+
+_PROFILE_CONTEXT_CARBONATE = "carbonate"
+_PROFILE_CONTEXT_NUTRIENTS = "nutrients"
+_PROFILE_CONTEXT_SALINITY = "salinity"
+
+_PROFILE_CONTEXT_KEYS: dict[str, str] = {
+    "alkalinitaet": _PROFILE_CONTEXT_CARBONATE,
+    "calcium": _PROFILE_CONTEXT_CARBONATE,
+    "salinitaet": _PROFILE_CONTEXT_SALINITY,
+    "nitrat": _PROFILE_CONTEXT_NUTRIENTS,
+    "phosphat": _PROFILE_CONTEXT_NUTRIENTS,
+    "phosphat_photometrisch": _PROFILE_CONTEXT_NUTRIENTS,
+    "gesamtphosphor_icp": _PROFILE_CONTEXT_NUTRIENTS,
+    "gesamtphosphat_errechnet": _PROFILE_CONTEXT_NUTRIENTS,
+}
+
+_PROFILE_ATTENTION_HIGH = "high"
+_PROFILE_ATTENTION_MEDIUM = "medium"
+
+# This is intentionally a relevance map, not a target-range table. SPS/LPS are
+# practical aquarium husbandry profiles rather than strict scientific taxa.
+# The profile changes only which already-measured parameters Reef ICP brings
+# to the user's attention. Laboratory status, targets and dosing remain intact.
+_PROFILE_RELEVANCE: dict[str, dict[str, str]] = {
+    STOCKING_PROFILE_MIXED_REEF: {
+        _PROFILE_CONTEXT_CARBONATE: _PROFILE_ATTENTION_HIGH,
+        _PROFILE_CONTEXT_NUTRIENTS: _PROFILE_ATTENTION_MEDIUM,
+        _PROFILE_CONTEXT_SALINITY: _PROFILE_ATTENTION_HIGH,
+    },
+    STOCKING_PROFILE_SPS_DOMINANT: {
+        _PROFILE_CONTEXT_CARBONATE: _PROFILE_ATTENTION_HIGH,
+        _PROFILE_CONTEXT_NUTRIENTS: _PROFILE_ATTENTION_HIGH,
+        _PROFILE_CONTEXT_SALINITY: _PROFILE_ATTENTION_HIGH,
+    },
+    STOCKING_PROFILE_LPS_DOMINANT: {
+        _PROFILE_CONTEXT_CARBONATE: _PROFILE_ATTENTION_HIGH,
+        _PROFILE_CONTEXT_NUTRIENTS: _PROFILE_ATTENTION_MEDIUM,
+        _PROFILE_CONTEXT_SALINITY: _PROFILE_ATTENTION_HIGH,
+    },
+    STOCKING_PROFILE_SOFT_CORAL_DOMINANT: {
+        _PROFILE_CONTEXT_NUTRIENTS: _PROFILE_ATTENTION_MEDIUM,
+        _PROFILE_CONTEXT_SALINITY: _PROFILE_ATTENTION_HIGH,
+    },
+    STOCKING_PROFILE_FISH_ONLY: {
+        _PROFILE_CONTEXT_NUTRIENTS: _PROFILE_ATTENTION_MEDIUM,
+        _PROFILE_CONTEXT_SALINITY: _PROFILE_ATTENTION_HIGH,
+    },
+}
+
+
+def _stocking_profile_context(
+    measurement: dict[str, Any],
+) -> str | None:
+    """Return the conservative profile-context bucket for one measurement."""
+    return _PROFILE_CONTEXT_KEYS.get(str(measurement.get("key") or ""))
+
+
+def _stocking_profile_insights(
+    stocking_profile: str | None,
+    measurements: list[dict[str, Any]],
+    analysis_insights: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Build contextual attention hints for the selected stocking profile.
+
+    These hints never replace laboratory status, targets or dosing. They only
+    highlight a deliberately small set of chemistry areas whose relevance can
+    be defended without inventing SPS/LPS-specific target ranges.
+    """
+    if not stocking_profile or stocking_profile == STOCKING_PROFILE_OTHER:
+        return None
+
+    relevance = _PROFILE_RELEVANCE.get(stocking_profile)
+    if not relevance:
+        return None
+
+    trend_map: dict[tuple[str, str], dict[str, Any]] = {}
+    if isinstance(analysis_insights, dict):
+        for trend in analysis_insights.get("trends", []):
+            if not isinstance(trend, dict):
+                continue
+            trend_key = (
+                str(trend.get("category") or "unknown"),
+                str(trend.get("key") or "unknown"),
+            )
+            trend_map[trend_key] = trend
+
+    items_by_key: dict[tuple[str, str], dict[str, Any]] = {}
+
+    for measurement in measurements:
+        context = _stocking_profile_context(measurement)
+        attention = relevance.get(context) if context else None
+        if attention is None:
+            continue
+
+        severity = _severity(measurement)
+        current_issue = severity in {"warning", "critical"}
+        trend = trend_map.get(_measurement_key(measurement))
+
+        # Medium-relevance areas are surfaced only when the current report is
+        # already abnormal. High-relevance areas may also surface a repeated
+        # numeric trend while the current value is still in range.
+        include_trend = (
+            trend is not None
+            and (
+                attention == _PROFILE_ATTENTION_HIGH
+                or current_issue
+            )
+        )
+        if not current_issue and not include_trend:
+            continue
+
+        item = {
+            "key": measurement.get("key"),
+            "name": measurement.get("name"),
+            "category": measurement.get("category"),
+            "unit": measurement.get("unit"),
+            "context": context,
+            "attention": attention,
+            "current": measurement.get("value"),
+            "current_raw_value": measurement.get("raw_value"),
+            "severity": severity,
+            "status": measurement.get("status"),
+            "target": measurement.get("target"),
+            "current_issue": current_issue,
+        }
+
+        if include_trend and trend is not None:
+            item.update(
+                {
+                    "trend_direction": trend.get("direction"),
+                    "trend_measurement_count": trend.get("measurement_count"),
+                    "trend_first_value": trend.get("first_value"),
+                    "trend_current_value": trend.get("current_value"),
+                }
+            )
+
+        items_by_key[_measurement_key(measurement)] = item
+
+    items = list(items_by_key.values())
+    attention_rank = {
+        _PROFILE_ATTENTION_HIGH: 0,
+        _PROFILE_ATTENTION_MEDIUM: 1,
+    }
+    severity_rank = {
+        "critical": 0,
+        "warning": 1,
+        "ok": 2,
+        "unknown": 3,
+    }
+    items.sort(
+        key=lambda item: (
+            attention_rank.get(str(item.get("attention")), 9),
+            severity_rank.get(str(item.get("severity")), 9),
+            0 if item.get("trend_direction") else 1,
+            str(item.get("name") or item.get("key") or ""),
+        )
+    )
+
+    if not items:
+        return None
+
+    total = len(items)
+    visible_items = items[:6]
+    context_counts = Counter(str(item.get("context")) for item in items)
+
+    return {
+        "profile": stocking_profile,
+        "profile_name": STOCKING_PROFILE_NAMES.get(
+            stocking_profile,
+            stocking_profile,
+        ),
+        "mode": "context_only",
+        "items": visible_items,
+        "item_count": total,
+        "items_limited": total > len(visible_items),
+        "context_counts": {
+            "carbonate": context_counts.get(_PROFILE_CONTEXT_CARBONATE, 0),
+            "nutrients": context_counts.get(_PROFILE_CONTEXT_NUTRIENTS, 0),
+            "salinity": context_counts.get(_PROFILE_CONTEXT_SALINITY, 0),
+        },
+    }
+
+
 def _status_counts(report: dict[str, Any]) -> dict[str, int]:
     """Count provider-normalized status severities."""
     counts = Counter(
@@ -820,6 +1009,16 @@ class ReefReportSensor(ReefBaseSensor):
         )
 
         profile = _aquarium_profile(self._entry)
+        analysis_insights = _analysis_insights(
+            self._entry,
+            self._report,
+            self._previous_report,
+        )
+        stocking_profile_insights = _stocking_profile_insights(
+            profile.get("stocking_profile"),
+            self._measurements,
+            analysis_insights,
+        )
         supply_recommendations = build_supply_recommendations(
             profile.get("supply_system"),
             profile.get("aquarium_volume_l"),
@@ -847,11 +1046,8 @@ class ReefReportSensor(ReefBaseSensor):
             else None,
             "previous_report_type": _report_type(self._previous_report),
             "status_counts": _status_counts(self._report),
-            "analysis_insights": _analysis_insights(
-                self._entry,
-                self._report,
-                self._previous_report,
-            ),
+            "analysis_insights": analysis_insights,
+            "stocking_profile_insights": stocking_profile_insights,
             "measurements": self._measurements,
             "interpretation": self._report.get("interpretation"),
             "product_recommendations": self._report.get("product_recommendations"),
