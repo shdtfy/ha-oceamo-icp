@@ -296,6 +296,17 @@ _FAUNA_ELEMENTALS_RULES: dict[str, dict[str, Any]] = {
 # ---------------------------------------------------------------------------
 
 _ATI_ICP_ELEMENT_RULES: dict[str, dict[str, Any]] = {
+    "barium": _rule(
+        name="Barium",
+        product="ATI ICP Element Barium",
+        kind="single_element",
+        dose_amount=1.0,
+        dose_unit="ml",
+        increase=1.0,
+        unit="µg/l",
+        source_name="ATI ICP Elements",
+        source_url="https://atiaquaristik.com/de/reeflab/icp-elements/",
+    ),
     "bor": _rule(
         name="Bor",
         product="ATI ICP Element Bor",
@@ -461,6 +472,17 @@ _ATI_ICP_ELEMENT_RULES: dict[str, dict[str, Any]] = {
         source_name="ATI ICP Elements",
         source_url="https://atiaquaristik.com/de/reeflab/icp-elements/",
     ),
+    "selen": _rule(
+        name="Selen",
+        product="ATI ICP Element Selen",
+        kind="single_element",
+        dose_amount=1.0,
+        dose_unit="ml",
+        increase=0.5,
+        unit="µg/l",
+        source_name="ATI ICP Elements",
+        source_url="https://atiaquaristik.com/de/reeflab/icp-elements/",
+    ),
     "strontium": _rule(
         name="Strontium",
         product="ATI ICP Element Strontium",
@@ -469,6 +491,17 @@ _ATI_ICP_ELEMENT_RULES: dict[str, dict[str, Any]] = {
         dose_unit="ml",
         increase=0.2,
         unit="mg/l",
+        source_name="ATI ICP Elements",
+        source_url="https://atiaquaristik.com/de/reeflab/icp-elements/",
+    ),
+    "vanadium": _rule(
+        name="Vanadium",
+        product="ATI ICP Element Vanadium",
+        kind="single_element",
+        dose_amount=1.0,
+        dose_unit="ml",
+        increase=5.0,
+        unit="µg/l",
         source_name="ATI ICP Elements",
         source_url="https://atiaquaristik.com/de/reeflab/icp-elements/",
     ),
