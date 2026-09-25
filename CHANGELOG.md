@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.11.7 - Development
+
+### Added
+
+- Added a persistent aquarium **stocking profile** to the Reef ICP aquarium profile.
+- New presets: **Mixed Reef**, **SPS-dominant**, **LPS-dominant**, **Soft-coral dominant**, **Fish Only** and **Other / custom**.
+- The stocking profile can be selected during first setup and changed later under **Configure → Aquarium settings**.
+- Added `stocking_profile` and `stocking_profile_name` to the `ICP Status` sensor attributes.
+- The bundled dashboard card now displays the stocking profile next to net volume and the selected supply system.
+
+### Important
+
+- Version `0.11.7` stores and displays the stocking profile only.
+- The profile does **not** currently change laboratory status, target ranges, severity, correction doses or maintenance dosing.
+- Profile-aware interpretation can be added later only for parameters where Reef ICP has a defensible evidence base instead of applying broad SPS/LPS multipliers.
+
 ## 0.11.6 - Development
 
 ### Fixed

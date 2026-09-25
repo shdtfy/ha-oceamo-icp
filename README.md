@@ -157,7 +157,12 @@ Reef ICP separates the aquarium itself from the laboratory that performs an ICP.
 Each aquarium can now store:
 
 - **Net water volume** in liters
+- **Stocking profile**
 - **Dosing / supply system**, independent of the ICP laboratory
+
+Stocking-profile presets currently include **Mixed Reef**, **SPS-dominant**, **LPS-dominant**, **Soft-coral dominant**, **Fish Only** and **Other / custom**.
+
+The stocking profile is intentionally metadata-only in version `0.11.7`: Reef ICP stores it, exposes it on the `ICP Status` sensor and shows it in the dashboard card, but it does **not** yet alter laboratory status, target ranges or dosing calculations.
 
 Built-in presets currently include **Fauna Marin Balling Light**, **ATI Essentials pro**, **TRITON Method** and **Oceamo DUO**. The selector also accepts a custom system name, and an aquarium can be set to analysis-only mode.
 
@@ -254,7 +259,7 @@ A manually selected date is stored with `analysis_date_source: manual`.
 
 - Install as a HACS custom repository
 - Add **Reef ICP** under **Settings → Devices & services**
-- Create an aquarium profile with net water volume and a persistent dosing/supply system
+- Create an aquarium profile with net water volume, a persistent stocking profile and a dosing/supply system
 - Import ICP PDFs directly in Home Assistant
 - Confirm or override the automatically detected ICP provider before a report is stored
 - Store up to 100 reports per aquarium
@@ -431,6 +436,8 @@ Version `0.11.0` completed the project-wide namespace rename. Existing test inst
 - [x] README screenshots
 - [x] Show laboratory interpretation / evaluation text inside the card when present
 - [x] Show laboratory dosing recommendations inside the card
+- [x] Persistent aquarium stocking profile with dashboard display
+- [ ] Evidence-based stocking-profile-aware interpretation and prioritization
 - [ ] Older ATI layouts and ATI Pro / Ultimate-MS variants
 - [x] Oceamo Reef ICP-MS / current ICP-MS report layout
 - [x] TRITON legacy ICP-OES (tested 2014 + 2015 layouts)
