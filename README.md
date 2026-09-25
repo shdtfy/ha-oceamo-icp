@@ -93,7 +93,7 @@ Reef ICP turns uploaded laboratory reports into a provider-independent Home Assi
 - ICP-MS-only / extended parameters such as SAK/SAC254, Cäsium, Cer, Gallium, Ruthenium, Thorium, Tellur, Neodym and Hafnium when present in the supplied report
 - Report metadata and sample timestamp
 - Measurements and target values
-- Oceamo rating artwork when the embedded icon is recognized; conservative range/limit fallback for changed artwork
+- Oceamo rating artwork from both classic and current ICP-MS layouts, including multiple icon sizes, with conservative range/limit fallback when artwork cannot be classified
 - `n.n.` and `n.b.` without converting them to zero
 - Interpretation and product recommendation text when present
 
@@ -317,7 +317,7 @@ These are imported as laboratory-provided recommendations. Reef ICP does not cur
 
 ## Status handling
 
-Oceamo status levels come directly from the status artwork embedded in the tested classic PDF.
+Oceamo status levels come directly from the rating artwork embedded in the report. Reef ICP recognizes the tested classic and current ICP-MS icon variants by Oceamo's green / yellow / red status colors and arrow direction, while retaining exact known classic icon hashes as a compatibility path.
 
 ATI's current PDF contains textual assessments. Reef ICP maps ATI labels such as `TOP`, `WENIG`, `ERHÖHT`, `ZU HOCH`, `Achtung` and `Kritisch` into the same `ok` / `warning` / `critical` model while preserving the laboratory result itself.
 

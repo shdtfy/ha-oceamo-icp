@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.11.3 - Development
+
+### Fixed
+
+- Fixed current Oceamo Reef ICP-MS reports showing valid measurements as `unknown` when the PDF used newer 27x27 / 40x40 rating artwork instead of the older 15x15 classic icons.
+- Oceamo rating artwork is now recognized by its green / yellow / red status color and arrow direction instead of relying only on a fixed image size and previously known hashes.
+- Kept the existing known classic Oceamo icon hashes as an exact compatibility path.
+
+### Tested
+
+- `MSR229115`: 70 measurements, **57 OK, 6 warning, 7 critical, 0 unknown**.
+- `MSR234022`: 70 measurements, **57 OK, 8 warning, 5 critical, 0 unknown**.
+- `OC186791` classic regression test: 47 measurements, **35 OK, 8 warning, 4 critical, 0 unknown**.
+
 ## 0.11.2 - Development
 
 ### Added
