@@ -3,10 +3,11 @@
     "step": {
       "user": {
         "title": "Reef ICP",
-        "description": "Create an aquarium profile, choose its net water volume and dosing system, then upload the first ICP PDF. Reef ICP detects the laboratory automatically and asks you to confirm it before import.",
+        "description": "Create an aquarium profile with net water volume, stocking profile and dosing system, then upload the first ICP PDF. The stocking profile is stored and displayed only for now and does not yet change targets or dosing recommendations. Reef ICP detects the laboratory automatically and asks you to confirm it before import.",
         "data": {
           "aquarium_name": "Aquarium name",
           "aquarium_volume_l": "Net water volume",
+          "stocking_profile": "Stocking profile",
           "supply_system": "Dosing / supply system",
           "pdf_file": "ICP PDF report"
         }
@@ -31,7 +32,7 @@
       "invalid_icp_pdf": "The PDF was recognized as a supported provider but could not be parsed as a supported ICP report.",
       "invalid_analysis_date": "Please select a valid analysis date.",
       "unknown": "An unexpected error occurred while reading the PDF.",
-      "invalid_aquarium_profile": "Enter a valid aquarium name, a net water volume greater than 0 L and a dosing system.",
+      "invalid_aquarium_profile": "Enter a valid aquarium name, a net water volume greater than 0 L, a stocking profile and a dosing system.",
       "provider_mismatch": "The PDF does not match the selected ICP provider. Choose the automatically detected provider or another matching laboratory."
     }
   },
@@ -60,9 +61,10 @@
       },
       "aquarium_settings": {
         "title": "Aquarium settings",
-        "description": "Set the aquarium's net water volume and permanent dosing/supply system. These settings are independent of the laboratory that performs an ICP. Choose a preset or enter a custom system.",
+        "description": "Set the aquarium's net water volume, stocking profile and permanent dosing/supply system. The stocking profile is currently stored as aquarium metadata only and does not yet change targets or calculations. These settings are independent of the laboratory that performs an ICP.",
         "data": {
           "aquarium_volume_l": "Net water volume",
+          "stocking_profile": "Stocking profile",
           "supply_system": "Dosing / supply system"
         }
       },
@@ -79,7 +81,7 @@
       "invalid_icp_pdf": "The PDF was recognized as a supported provider but could not be parsed as a supported ICP report.",
       "invalid_analysis_date": "Please select a valid analysis date.",
       "unknown": "An unexpected error occurred while reading the PDF.",
-      "invalid_aquarium_profile": "Enter a net water volume greater than 0 L and a dosing system.",
+      "invalid_aquarium_profile": "Enter a net water volume greater than 0 L, a stocking profile and a dosing system.",
       "provider_mismatch": "The PDF does not match the selected ICP provider. Choose the automatically detected provider or another matching laboratory."
     }
   }
