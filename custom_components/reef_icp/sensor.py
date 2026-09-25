@@ -668,6 +668,11 @@ def _stocking_profile_insights(
         if not current_issue and not include_trend:
             continue
 
+        current_target_distance = _target_distance(
+            measurement.get("value"),
+            measurement.get("target"),
+        )
+
         item = {
             "key": measurement.get("key"),
             "name": measurement.get("name"),
@@ -681,6 +686,8 @@ def _stocking_profile_insights(
             "status": measurement.get("status"),
             "target": measurement.get("target"),
             "current_issue": current_issue,
+            "target_comparable": current_target_distance is not None,
+            "current_target_distance": current_target_distance,
         }
 
         if include_trend and trend is not None:
