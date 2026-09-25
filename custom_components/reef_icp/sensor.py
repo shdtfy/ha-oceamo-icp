@@ -862,11 +862,19 @@ def _action_plan(
                 }
             )
 
-    # 3) Stocking-profile context. This is a signal, never a new dose/action.
+    # 3) Stocking-profile context. Inside the action plan, profile context is
+    # only added when it contributes a repeated numeric trend. A plain
+    # "relevant / observe" signal already exists in the dedicated profile panel
+    # and would add noise here without changing the next action.
     if isinstance(stocking_profile_insights, dict):
         for profile_item in stocking_profile_insights.get("items", []):
             if not isinstance(profile_item, dict):
                 continue
+
+            trend_direction = profile_item.get("trend_direction")
+            if trend_direction not in {"up", "down"}:
+                continue
+
             key = str(profile_item.get("key") or "")
             if not key:
                 continue
@@ -877,8 +885,7 @@ def _action_plan(
                     "source": "stocking_profile",
                     "attention": profile_item.get("attention"),
                     "context": profile_item.get("context"),
-                    "current_issue": profile_item.get("current_issue"),
-                    "trend_direction": profile_item.get("trend_direction"),
+                    "trend_direction": trend_direction,
                     "trend_measurement_count": profile_item.get(
                         "trend_measurement_count"
                     ),
@@ -940,6 +947,14 @@ def _action_plan(
     metadata = report.get("metadata", {})
     total = len(items)
     visible_items = items[:8]
+    visible_action_items = [
+        item for item in visible_items if item.get("has_action")
+    ]
+    visible_review_items = [
+        item for item in visible_items if not item.get("has_action")
+    ]
+    action_item_count = sum(1 for item in items if item.get("has_action"))
+    review_item_count = sum(1 for item in items if not item.get("has_action"))
 
     return {
         "analysis_number": metadata.get("analysis_number"),
@@ -947,11 +962,17 @@ def _action_plan(
         "provider": _report_provider(report),
         "provider_name": _report_provider_name(report),
         "report_type": _report_type(report),
+        # `items` remains for backwards compatibility. The explicit groups make
+        # the intended UI hierarchy available to other consumers as well.
         "items": visible_items,
+        "action_items": visible_action_items,
+        "review_items": visible_review_items,
         "item_count": total,
         "items_limited": total > len(visible_items),
-        "action_item_count": sum(1 for item in items if item.get("has_action")),
-        "review_item_count": sum(1 for item in items if not item.get("has_action")),
+        "action_item_count": action_item_count,
+        "review_item_count": review_item_count,
+        "visible_action_item_count": len(visible_action_items),
+        "visible_review_item_count": len(visible_review_items),
     }
 
 
