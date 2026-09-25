@@ -848,10 +848,108 @@ def _parse_oceamo_measurement_line(
     return measurement
 
 
+_OCEAMO_STATUS_COLORS: dict[str, tuple[int, int, int]] = {
+    "ok": (101, 168, 68),
+    "warning": (237, 201, 44),
+    "critical": (237, 66, 44),
+}
+
+
+def _oceamo_status_from_image(obj: Any) -> dict[str, str | None] | None:
+    """Classify Oceamo rating artwork by color and arrow geometry.
+
+    Classic reports used 15x15 status images while current ICP-MS reports use
+    several larger variants (for example 27x27 and 40x40). Restricting the
+    parser to one image size caused valid ICP-MS ratings to fall back to
+    ``unknown``. Known classic hashes remain authoritative, while unfamiliar
+    square status artwork is classified from Oceamo's green/yellow/red colors
+    and the vertical position of the white arrow.
+    """
+    if obj.get("/Subtype") != "/Image":
+        return None
+
+    try:
+        width = int(obj.get("/Width") or 0)
+        height = int(obj.get("/Height") or 0)
+        bits = int(obj.get("/BitsPerComponent") or 0)
+    except (TypeError, ValueError):
+        return None
+
+    if (
+        width < 12
+        or height < 12
+        or width > 50
+        or height > 50
+        or abs(width - height) > 3
+        or str(obj.get("/ColorSpace")) != "/DeviceRGB"
+        or bits != 8
+    ):
+        return None
+
+    try:
+        data = obj.get_data()
+    except Exception:  # noqa: BLE001
+        return None
+
+    if len(data) != width * height * 3:
+        return None
+
+    digest = hashlib.md5(data).hexdigest()  # noqa: S324
+    if known := _OCEAMO_STATUS_IMAGE_HASHES.get(digest):
+        return dict(known)
+
+    color_scores = {severity: 0 for severity in _OCEAMO_STATUS_COLORS}
+    white_y_sum = 0.0
+    white_pixels = 0
+    max_color_distance_sq = 45 * 45
+
+    for pixel_index in range(width * height):
+        offset = pixel_index * 3
+        red, green, blue = data[offset : offset + 3]
+
+        for severity, (ref_r, ref_g, ref_b) in _OCEAMO_STATUS_COLORS.items():
+            distance_sq = (
+                (red - ref_r) ** 2
+                + (green - ref_g) ** 2
+                + (blue - ref_b) ** 2
+            )
+            if distance_sq <= max_color_distance_sq:
+                color_scores[severity] += 1
+
+        # Oceamo's arrows/check marks are white. The transparent matte pixels
+        # in the tested PDFs decode as black, so this also works without
+        # depending on a specific soft-mask encoding.
+        if red >= 205 and green >= 205 and blue >= 205:
+            white_y_sum += pixel_index // width
+            white_pixels += 1
+
+    severity = max(color_scores, key=color_scores.get)
+    minimum_colored_pixels = max(8, int(width * height * 0.12))
+    if color_scores[severity] < minimum_colored_pixels:
+        return None
+
+    if severity == "ok":
+        return {"severity": "ok", "direction": None}
+
+    direction: str | None = None
+    minimum_white_pixels = max(5, int(width * height * 0.02))
+    if white_pixels >= minimum_white_pixels:
+        mean_y = white_y_sum / white_pixels
+        center_y = (height - 1) / 2
+        normalized_offset = (mean_y - center_y) / height
+
+        if normalized_offset < -0.03:
+            direction = "high"
+        elif normalized_offset > 0.03:
+            direction = "low"
+
+    return {"severity": severity, "direction": direction}
+
+
 def _extract_oceamo_status_sequence(
     page: Any, reader: PdfReader
 ) -> list[dict[str, Any]]:
-    """Extract known Oceamo status icons in drawing order."""
+    """Extract Oceamo status icons in drawing order."""
     resources = page.get("/Resources")
     if resources is None:
         return []
@@ -865,19 +963,7 @@ def _extract_oceamo_status_sequence(
 
     for name, reference in xobjects.items():
         obj = reference.get_object()
-        if (
-            obj.get("/Subtype") != "/Image"
-            or obj.get("/Width") != 15
-            or obj.get("/Height") != 15
-        ):
-            continue
-
-        try:
-            digest = hashlib.md5(obj.get_data()).hexdigest()  # noqa: S324
-        except Exception:  # noqa: BLE001
-            continue
-
-        if status := _OCEAMO_STATUS_IMAGE_HASHES.get(digest):
+        if status := _oceamo_status_from_image(obj):
             statuses_by_name[str(name)] = status
 
     if not statuses_by_name:
