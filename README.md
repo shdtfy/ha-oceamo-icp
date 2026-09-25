@@ -171,7 +171,7 @@ Reef ICP keeps the laboratory interpretation separate from the aquarium's own su
 
 Starting with version `0.10.0`, the recommendation engine supports:
 
-- **Fauna Marin Balling Light** core corrections plus a broad set of **Fauna Marin Elementals / Elementals Trace** single-element corrections.
+- **Fauna Marin Balling Light** core corrections plus a broad set of **Fauna Marin Elementals / Elementals Trace** single-element corrections, including Elementals Trace Se for selenium.
 - **ATI Essentials pro** with **ATI ICP Elements** for provider-independent correction of major, minor and trace-element deficiencies.
 - **Oceamo DUO** with numeric DUO-KH correction plus **Oceamo Single Elements** for supported individual deficiencies.
 - **TRITON Method / Core7 Flex** as an official-calculator workflow. Reef ICP identifies the deficient TRITON single element and links to TRITON's own calculator instead of copying an unpublished product concentration.
@@ -190,6 +190,8 @@ When the manufacturer publishes a maximum daily increase, Reef ICP also calculat
 Calculated amounts are **correction doses**, not permanent daily maintenance doses. Balling Light, ATI Essentials pro, Oceamo DUO and TRITON Core7 remain consumption-driven systems for ongoing daily dosing.
 
 Manufacturer formulations can change. Reef ICP therefore surfaces the manufacturer source used for each recommendation and users should confirm the current product label before dosing.
+
+For **Fauna Marin Elementals Trace Se**, Reef ICP uses the published strength of **1 ml per 100 l for +0.5 µg/l selenium** and Fauna Marin's published maximum daily increase of **+1 µg/l**.
 
 ### ICP-MS-only corrections
 

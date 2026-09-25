@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.11.4 - Development
+
+### Added
+
+- Added **Fauna Marin Elementals Trace Se** to the Balling Light recommendation rules.
+- The calculation uses Fauna Marin's published strength of **1 ml per 100 l for +0.5 µg/l selenium**.
+- Added Fauna Marin's published maximum daily increase of **+1 µg/l selenium**.
+
+### Fixed
+
+- Selenium can now appear in provider-independent recommendations when the aquarium uses **Fauna Marin Balling Light** and the current ICP contains a low numeric selenium result.
+
+### Tested
+
+- For the supplied Oceamo Reef ICP-MS report `MSR234022`, a selenium value of **0.097 µg/l** with a target lower bound of **0.2 µg/l** and an aquarium net volume of **54 l** produces a correction dose of approximately **0.111 ml Fauna Marin Elementals Trace Se**.
+
 ## 0.11.3 - Development
 
 ### Fixed
