@@ -17,8 +17,10 @@ from homeassistant.helpers.typing import StateType
 from .const import (
     CONF_AQUARIUM_VOLUME_L,
     CONF_REPORTS,
+    CONF_STOCKING_PROFILE,
     CONF_SUPPLY_SYSTEM,
     DOMAIN,
+    STOCKING_PROFILE_NAMES,
     SUPPLY_SYSTEM_NAMES,
 )
 from .recommendations import build_supply_recommendations
@@ -36,9 +38,17 @@ def _reports(entry: ConfigEntry) -> list[dict[str, Any]]:
 def _aquarium_profile(entry: ConfigEntry) -> dict[str, Any]:
     """Return persistent aquarium settings used across all ICP providers."""
     volume = entry.options.get(CONF_AQUARIUM_VOLUME_L)
+    stocking_profile = entry.options.get(CONF_STOCKING_PROFILE)
     system = entry.options.get(CONF_SUPPLY_SYSTEM)
     return {
         "aquarium_volume_l": volume,
+        "stocking_profile": stocking_profile,
+        "stocking_profile_name": STOCKING_PROFILE_NAMES.get(
+            str(stocking_profile),
+            str(stocking_profile),
+        )
+        if stocking_profile
+        else None,
         "supply_system": system,
         "supply_system_name": SUPPLY_SYSTEM_NAMES.get(str(system), str(system))
         if system

@@ -39,6 +39,7 @@ from .const import (
     CONF_AQUARIUM_NAME,
     CONF_AQUARIUM_VOLUME_L,
     CONF_REPORTS,
+    CONF_STOCKING_PROFILE,
     CONF_SUPPLY_SYSTEM,
     DOMAIN,
     MAX_STORED_REPORTS,
@@ -48,6 +49,13 @@ from .const import (
     SUPPLY_SYSTEM_NONE,
     SUPPLY_SYSTEM_OCEAMO_DUO,
     SUPPLY_SYSTEM_TRITON_METHOD,
+    STOCKING_PROFILE_FISH_ONLY,
+    STOCKING_PROFILE_LPS_DOMINANT,
+    STOCKING_PROFILE_MIXED_REEF,
+    STOCKING_PROFILE_NAMES,
+    STOCKING_PROFILE_OTHER,
+    STOCKING_PROFILE_SOFT_CORAL_DOMINANT,
+    STOCKING_PROFILE_SPS_DOMINANT,
 )
 from .parser import (
     IcpParseError,
@@ -145,6 +153,14 @@ def _normalize_supply_system(value: Any) -> str:
     return system
 
 
+def _normalize_stocking_profile(value: Any) -> str:
+    """Return a supported aquarium stocking-profile identifier."""
+    profile = str(value).strip()
+    if profile not in STOCKING_PROFILE_NAMES:
+        raise ValueError("Unsupported stocking profile.")
+    return profile
+
+
 def _supply_system_options(hass: HomeAssistant) -> list[SelectOptionDict]:
     """Return localized preset labels while still allowing custom systems."""
     is_german = str(hass.config.language or "").lower().startswith("de")
@@ -172,6 +188,51 @@ def _supply_system_options(hass: HomeAssistant) -> list[SelectOptionDict]:
             label="Oceamo DUO",
         ),
     ]
+
+
+def _stocking_profile_options(hass: HomeAssistant) -> list[SelectOptionDict]:
+    """Return localized aquarium stocking-profile presets."""
+    is_german = str(hass.config.language or "").lower().startswith("de")
+    labels = (
+        {
+            STOCKING_PROFILE_MIXED_REEF: "Mixed Reef",
+            STOCKING_PROFILE_SPS_DOMINANT: "SPS-dominant",
+            STOCKING_PROFILE_LPS_DOMINANT: "LPS-dominant",
+            STOCKING_PROFILE_SOFT_CORAL_DOMINANT: "Weichkorallen-dominant",
+            STOCKING_PROFILE_FISH_ONLY: "Fish Only / Fischbesatz ohne Korallen",
+            STOCKING_PROFILE_OTHER: "Sonstiges / benutzerdefiniert",
+        }
+        if is_german
+        else {
+            STOCKING_PROFILE_MIXED_REEF: "Mixed Reef",
+            STOCKING_PROFILE_SPS_DOMINANT: "SPS-dominant",
+            STOCKING_PROFILE_LPS_DOMINANT: "LPS-dominant",
+            STOCKING_PROFILE_SOFT_CORAL_DOMINANT: "Soft-coral dominant",
+            STOCKING_PROFILE_FISH_ONLY: "Fish Only",
+            STOCKING_PROFILE_OTHER: "Other / custom",
+        }
+    )
+    return [
+        SelectOptionDict(value=value, label=labels[value])
+        for value in (
+            STOCKING_PROFILE_MIXED_REEF,
+            STOCKING_PROFILE_SPS_DOMINANT,
+            STOCKING_PROFILE_LPS_DOMINANT,
+            STOCKING_PROFILE_SOFT_CORAL_DOMINANT,
+            STOCKING_PROFILE_FISH_ONLY,
+            STOCKING_PROFILE_OTHER,
+        )
+    ]
+
+
+def _stocking_profile_selector(hass: HomeAssistant) -> SelectSelector:
+    """Return the persistent aquarium stocking-profile selector."""
+    return SelectSelector(
+        SelectSelectorConfig(
+            options=_stocking_profile_options(hass),
+            mode=SelectSelectorMode.DROPDOWN,
+        )
+    )
 
 
 def _volume_selector() -> NumberSelector:
@@ -350,6 +411,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
     _pending_report: dict[str, Any] | None = None
     _pending_aquarium_name: str | None = None
     _pending_aquarium_volume_l: float | None = None
+    _pending_stocking_profile: str | None = None
     _pending_supply_system: str | None = None
 
     @staticmethod
@@ -367,6 +429,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
         self._pending_report = None
         self._pending_aquarium_name = None
         self._pending_aquarium_volume_l = None
+        self._pending_stocking_profile = None
         self._pending_supply_system = None
 
     @override
@@ -381,6 +444,9 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                 aquarium_name = str(user_input[CONF_AQUARIUM_NAME]).strip()
                 aquarium_volume_l = _normalize_aquarium_volume(
                     user_input[CONF_AQUARIUM_VOLUME_L]
+                )
+                stocking_profile = _normalize_stocking_profile(
+                    user_input[CONF_STOCKING_PROFILE]
                 )
                 supply_system = _normalize_supply_system(
                     user_input[CONF_SUPPLY_SYSTEM]
@@ -411,6 +477,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                     self._pending_report = preview_report
                     self._pending_aquarium_name = aquarium_name
                     self._pending_aquarium_volume_l = aquarium_volume_l
+                    self._pending_stocking_profile = stocking_profile
                     self._pending_supply_system = supply_system
                     return await self.async_step_confirm_provider()
 
@@ -420,6 +487,9 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                     TextSelectorConfig(type=TextSelectorType.TEXT)
                 ),
                 probatio.Required(CONF_AQUARIUM_VOLUME_L): _volume_selector(),
+                probatio.Required(CONF_STOCKING_PROFILE): _stocking_profile_selector(
+                    self.hass
+                ),
                 probatio.Required(CONF_SUPPLY_SYSTEM): _supply_system_selector(
                     self.hass
                 ),
@@ -446,6 +516,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
             or self._pending_detected_provider is None
             or self._pending_aquarium_name is None
             or self._pending_aquarium_volume_l is None
+            or self._pending_stocking_profile is None
             or self._pending_supply_system is None
         ):
             return await self.async_step_user()
@@ -482,6 +553,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
                 aquarium_name = self._pending_aquarium_name
                 aquarium_volume_l = self._pending_aquarium_volume_l
+                stocking_profile = self._pending_stocking_profile
                 supply_system = self._pending_supply_system
                 self._clear_pending_import()
 
@@ -491,6 +563,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                     options={
                         CONF_REPORTS: [report],
                         CONF_AQUARIUM_VOLUME_L: aquarium_volume_l,
+                        CONF_STOCKING_PROFILE: stocking_profile,
                         CONF_SUPPLY_SYSTEM: supply_system,
                     },
                 )
@@ -522,6 +595,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
             or self._pending_provider is None
             or self._pending_aquarium_name is None
             or self._pending_aquarium_volume_l is None
+            or self._pending_stocking_profile is None
             or self._pending_supply_system is None
         ):
             return await self.async_step_user()
@@ -547,6 +621,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
                 aquarium_name = self._pending_aquarium_name
                 aquarium_volume_l = self._pending_aquarium_volume_l
+                stocking_profile = self._pending_stocking_profile
                 supply_system = self._pending_supply_system
                 self._clear_pending_import()
 
@@ -556,6 +631,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                     options={
                         CONF_REPORTS: [report],
                         CONF_AQUARIUM_VOLUME_L: aquarium_volume_l,
+                        CONF_STOCKING_PROFILE: stocking_profile,
                         CONF_SUPPLY_SYSTEM: supply_system,
                     },
                 )
@@ -742,6 +818,9 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
                 aquarium_volume_l = _normalize_aquarium_volume(
                     user_input[CONF_AQUARIUM_VOLUME_L]
                 )
+                stocking_profile = _normalize_stocking_profile(
+                    user_input[CONF_STOCKING_PROFILE]
+                )
                 supply_system = _normalize_supply_system(
                     user_input[CONF_SUPPLY_SYSTEM]
                 )
@@ -750,10 +829,15 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
             else:
                 options = dict(self.config_entry.options)
                 options[CONF_AQUARIUM_VOLUME_L] = aquarium_volume_l
+                options[CONF_STOCKING_PROFILE] = stocking_profile
                 options[CONF_SUPPLY_SYSTEM] = supply_system
                 return self.async_create_entry(title="", data=options)
 
         suggested: dict[str, Any] = {
+            CONF_STOCKING_PROFILE: self.config_entry.options.get(
+                CONF_STOCKING_PROFILE,
+                STOCKING_PROFILE_OTHER,
+            ),
             CONF_SUPPLY_SYSTEM: self.config_entry.options.get(
                 CONF_SUPPLY_SYSTEM,
                 SUPPLY_SYSTEM_NONE,
@@ -765,6 +849,9 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
         schema = probatio.Schema(
             {
                 probatio.Required(CONF_AQUARIUM_VOLUME_L): _volume_selector(),
+                probatio.Required(CONF_STOCKING_PROFILE): _stocking_profile_selector(
+                    self.hass
+                ),
                 probatio.Required(CONF_SUPPLY_SYSTEM): _supply_system_selector(
                     self.hass
                 ),
