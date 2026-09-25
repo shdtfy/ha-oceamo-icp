@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.11.9 - Development
+
+### Fixed
+
+- Fixed false **new issue** / improvement / worsening labels when consecutive ICP reports come from different laboratories with different status classifications or reference ranges.
+- The **Since the previous ICP** comparison now evaluates both numeric measurements against the **current report's normalized target definition**, so both values are judged on one consistent scale.
+- Values that were already outside the current target range are now classified as **closer to target** or **further from target** instead of being incorrectly presented as newly abnormal.
+- Non-numeric laboratory results such as `n.n.`, `n.g.`, `n.b.` and ATI `---` are excluded from improvement/worsening comparisons when a numeric target distance cannot be established.
+- Repeated multi-report trends remain numeric and provider-independent and are unchanged.
+
+### Example
+
+With a current target range of `400–440 mg/l` calcium, a previous value of `443 mg/l` and a current value of `515 mg/l` are now classified as **further from target**, not as a newly abnormal value.
+
 ## 0.11.8 - Development
 
 ### Added

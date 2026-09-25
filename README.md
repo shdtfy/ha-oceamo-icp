@@ -176,11 +176,12 @@ Starting with version `0.11.8`, Reef ICP can summarize what changed since the pr
 
 The `ICP Status` sensor exposes an `analysis_insights` payload with:
 
-- status transitions between the newest and immediately previous report,
-- newly abnormal values,
-- values that returned to OK,
-- warning / critical escalation or improvement,
+- values that newly move outside the current target range,
+- values that return to the current target range,
+- values that move closer to or further from the current target range,
 - repeated numeric measurement trends across stored reports.
+
+For the latest-vs-previous comparison, Reef ICP deliberately evaluates **both numeric values against the current report's normalized target definition**. It does not compare two laboratories' warning/critical labels directly, because providers can use different classifications and reference ranges. Non-numeric states such as `n.n.`, `n.g.`, `n.b.` or ATI `---` are not assigned a target-distance improvement/worsening judgment.
 
 A repeated trend is created only after at least **three numeric measurements** of the same normalized analyte and unit move consecutively in one direction. For example, an iodine value that falls across three stored measurements can be shown as a repeated downward measurement trend.
 
