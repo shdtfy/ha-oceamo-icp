@@ -170,6 +170,54 @@ These settings remain attached to the aquarium when additional reports from Ocea
 
 This is the foundation for a provider-independent recommendation engine: laboratory measurements stay normalized by Reef ICP, while dosing recommendations can be generated for the aquarium's chosen supply system and net water volume rather than blindly copying the laboratory's product recommendations.
 
+## Action plan and configurable card sections
+
+Starting with version `0.13.0`, Reef ICP can build a compact `action_plan` from guidance that already exists elsewhere in the integration.
+
+The action plan may group, per analyte:
+
+- direct dosing or water-change instructions parsed from the laboratory report,
+- correction / reduce / pause guidance from the selected supply system,
+- stocking-profile attention signals,
+- newly abnormal or worsening changes since the previous ICP.
+
+The plan does **not** create a second dose. Laboratory instructions and Reef ICP supply-system calculations remain separate and are labeled by source. If both sources provide an action for the same analyte, the card warns the user not to add the doses together.
+
+Example backend structure:
+
+```yaml
+action_plan:
+  analysis_number: 074421I
+  items:
+    - key: iod
+      name: Iod
+      actions:
+        - source: laboratory
+          action: dose
+          amount_ml: 2.8
+          days: 2
+        - source: supply_system
+          action: correction_dose
+          dose_amount: 2.268
+          dose_unit: ml
+      multiple_action_sources: true
+```
+
+### Card visibility controls
+
+The Reef ICP card uses Home Assistant's graphical card configuration form. Under **Additional sections**, each optional collapsible panel can be enabled or disabled separately:
+
+- Action plan
+- Since the previous ICP
+- Stocking-profile insights
+- Laboratory recommendations
+- Supply-system recommendations
+- Laboratory interpretation
+
+All sections default to enabled. Existing cards remain compatible because missing visibility options are interpreted as enabled.
+
+The separate **Show previous ICP** option still controls the previous-analysis comparison shown inside measurement rows and in the card header.
+
 ## Stocking-profile insights
 
 Starting with version `0.12.0`, the stored stocking profile can add a separate context layer to the dashboard.
@@ -525,6 +573,8 @@ Version `0.11.0` completed the project-wide namespace rename. Existing test inst
 - [x] Show laboratory dosing recommendations inside the card
 - [x] Persistent aquarium stocking profile with dashboard display
 - [x] Latest-analysis status-change summary and repeated multi-report trends
+- [x] Compact action plan combining existing guidance without merging doses
+- [x] Per-section visibility controls in the graphical card editor
 - [x] Evidence-based stocking-profile-aware interpretation and prioritization
 - [ ] Expand profile-aware rules only where defensible evidence and representative reports exist
 - [ ] Older ATI layouts and ATI Pro / Ultimate-MS variants

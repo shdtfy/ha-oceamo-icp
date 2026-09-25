@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.13.0 - Development
+
+### Added
+
+- Added a new **Action plan** payload and collapsible card panel.
+- The plan groups existing information by analyte instead of inventing new chemistry advice:
+  - direct instructions imported from the laboratory report,
+  - Reef ICP correction guidance for the selected supply system,
+  - stocking-profile context,
+  - newly abnormal / worsening changes since the previous ICP.
+- Laboratory and supply-system instructions remain separate source actions.
+- If both the laboratory report and the selected supply system provide an action for the same analyte, Reef ICP explicitly warns that the doses must **not** be added together.
+- The action plan exposes up to eight current items through the new `action_plan` attribute on the `ICP Status` sensor.
+
+### Card editor
+
+- Added graphical visibility controls for all optional collapsible sections.
+- Users can independently show or hide:
+  - Action plan
+  - Since the previous ICP
+  - Stocking-profile insights
+  - Laboratory recommendations
+  - Supply-system recommendations
+  - Laboratory interpretation
+- The existing **Show previous ICP** setting remains independent.
+- All optional sections default to enabled to preserve the current card experience.
+- The controls are grouped in a dedicated **Additional sections** area in the Home Assistant visual card editor.
+
+### Safety / separation
+
+- The action plan does not calculate a second dose.
+- Imported laboratory dosing and Reef ICP supply-system corrections are never silently merged.
+- Stocking-profile and trend information remains advisory context, not an automatic dosing instruction.
+
 ## 0.12.1 - Development
 
 ### Fixed
