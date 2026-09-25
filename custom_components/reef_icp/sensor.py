@@ -226,6 +226,319 @@ def _laboratory_recommendations(
     }
 
 
+
+_SEVERITY_RANK = {
+    "ok": 0,
+    "warning": 1,
+    "critical": 2,
+}
+
+
+def _severity(measurement: dict[str, Any] | None) -> str:
+    """Return one normalized severity label."""
+    if measurement is None:
+        return "unknown"
+    value = measurement.get("status", {}).get("severity", "unknown")
+    return str(value) if value else "unknown"
+
+
+def _target_distance(value: Any, target: Any) -> float | None:
+    """Return the distance of a numeric value from one target definition."""
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    if not isinstance(target, dict):
+        return None
+
+    target_type = target.get("type")
+    numeric_value = float(value)
+
+    if target_type == "exact":
+        target_value = target.get("value")
+        if not isinstance(target_value, (int, float)) or isinstance(
+            target_value, bool
+        ):
+            return None
+        return abs(numeric_value - float(target_value))
+
+    if target_type == "range":
+        minimum = target.get("min")
+        maximum = target.get("max")
+        if (
+            not isinstance(minimum, (int, float))
+            or isinstance(minimum, bool)
+            or not isinstance(maximum, (int, float))
+            or isinstance(maximum, bool)
+        ):
+            return None
+        if numeric_value < float(minimum):
+            return float(minimum) - numeric_value
+        if numeric_value > float(maximum):
+            return numeric_value - float(maximum)
+        return 0.0
+
+    if target_type == "upper_limit":
+        maximum = target.get("max")
+        if not isinstance(maximum, (int, float)) or isinstance(maximum, bool):
+            return None
+        return max(0.0, numeric_value - float(maximum))
+
+    if target_type == "lower_limit":
+        minimum = target.get("min")
+        if not isinstance(minimum, (int, float)) or isinstance(minimum, bool):
+            return None
+        return max(0.0, float(minimum) - numeric_value)
+
+    return None
+
+
+def _analysis_change_items(
+    current_report: dict[str, Any],
+    previous_report: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Return status transitions between the newest and previous ICP."""
+    if previous_report is None:
+        return []
+
+    current_measurements = _measurement_map(current_report)
+    previous_measurements = _measurement_map(previous_report)
+    items: list[dict[str, Any]] = []
+
+    for key, current in current_measurements.items():
+        previous = previous_measurements.get(key)
+        if previous is None:
+            continue
+
+        current_severity = _severity(current)
+        previous_severity = _severity(previous)
+        current_rank = _SEVERITY_RANK.get(current_severity)
+        previous_rank = _SEVERITY_RANK.get(previous_severity)
+
+        # Unknown states are deliberately excluded from status-transition
+        # judgments. A provider may simply not have enough information.
+        if current_rank is None or previous_rank is None:
+            continue
+        if current_rank == previous_rank:
+            continue
+
+        if previous_severity == "ok" and current_severity in {
+            "warning",
+            "critical",
+        }:
+            kind = "new_issue"
+        elif current_severity == "ok" and previous_severity in {
+            "warning",
+            "critical",
+        }:
+            kind = "resolved"
+        elif current_rank > previous_rank:
+            kind = "worsened"
+        else:
+            kind = "improved"
+
+        items.append(
+            {
+                "kind": kind,
+                "key": current.get("key"),
+                "name": current.get("name"),
+                "category": current.get("category"),
+                "unit": current.get("unit"),
+                "current": current.get("value"),
+                "current_raw_value": current.get("raw_value"),
+                "previous": previous.get("value"),
+                "previous_raw_value": previous.get("raw_value"),
+                "delta": _delta(
+                    current.get("value"),
+                    previous.get("value"),
+                ),
+                "current_severity": current_severity,
+                "previous_severity": previous_severity,
+                "status": current.get("status"),
+                "previous_status": previous.get("status"),
+                "target": current.get("target"),
+                "current_target_distance": _target_distance(
+                    current.get("value"),
+                    current.get("target"),
+                ),
+                "previous_target_distance": _target_distance(
+                    previous.get("value"),
+                    current.get("target"),
+                ),
+            }
+        )
+
+    priority = {
+        "new_issue": 0,
+        "worsened": 1,
+        "resolved": 2,
+        "improved": 3,
+    }
+    items.sort(
+        key=lambda item: (
+            priority.get(str(item.get("kind")), 9),
+            -_SEVERITY_RANK.get(str(item.get("current_severity")), -1),
+            str(item.get("name") or item.get("key") or ""),
+        )
+    )
+    return items
+
+
+def _numeric_direction(previous: float, current: float) -> str:
+    """Return the numeric direction between two measured values."""
+    delta = current - previous
+    epsilon = max(abs(previous), abs(current), 1.0) * 1e-9
+    if delta > epsilon:
+        return "up"
+    if delta < -epsilon:
+        return "down"
+    return "same"
+
+
+def _analysis_trends(
+    entry: ConfigEntry,
+    current_report: dict[str, Any],
+) -> tuple[list[dict[str, Any]], int]:
+    """Return repeated same-direction measurement streaks across ICP reports.
+
+    A trend is reported only after at least three numeric measurements of the
+    same normalized analyte and unit move consecutively in one direction.
+    This is a descriptive measurement trend, not a biological judgment.
+    """
+    reports = sorted(_reports(entry), key=_report_sort_key)
+    if len(reports) < 3:
+        return [], 0
+
+    current_measurements = _measurement_map(current_report)
+    trends: list[dict[str, Any]] = []
+
+    for key, current in current_measurements.items():
+        current_unit = current.get("unit")
+        points: list[dict[str, Any]] = []
+
+        for report in reports:
+            measurement = _measurement_map(report).get(key)
+            if measurement is None:
+                continue
+            if measurement.get("unit") != current_unit:
+                continue
+
+            value = measurement.get("value")
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+            ):
+                continue
+
+            metadata = report.get("metadata", {})
+            points.append(
+                {
+                    "value": float(value),
+                    "analysis_number": metadata.get("analysis_number"),
+                    "analysis_date": metadata.get("analysis_date"),
+                    "sample_taken": metadata.get("sample_taken"),
+                    "provider": _report_provider(report),
+                    "provider_name": _report_provider_name(report),
+                    "report_type": _report_type(report),
+                }
+            )
+
+        if len(points) < 3:
+            continue
+
+        latest_direction = _numeric_direction(
+            points[-2]["value"],
+            points[-1]["value"],
+        )
+        if latest_direction == "same":
+            continue
+
+        streak_count = 2
+        index = len(points) - 2
+        while index > 0:
+            direction = _numeric_direction(
+                points[index - 1]["value"],
+                points[index]["value"],
+            )
+            if direction != latest_direction:
+                break
+            streak_count += 1
+            index -= 1
+
+        if streak_count < 3:
+            continue
+
+        first = points[-streak_count]
+        latest = points[-1]
+        delta = round(latest["value"] - first["value"], 6)
+
+        trends.append(
+            {
+                "key": current.get("key"),
+                "name": current.get("name"),
+                "category": current.get("category"),
+                "unit": current_unit,
+                "direction": latest_direction,
+                "measurement_count": streak_count,
+                "first_value": first["value"],
+                "current_value": latest["value"],
+                "delta": 0.0 if delta == -0.0 else delta,
+                "first_analysis_number": first.get("analysis_number"),
+                "first_analysis_date": first.get("analysis_date"),
+                "current_analysis_number": latest.get("analysis_number"),
+                "current_analysis_date": latest.get("analysis_date"),
+                "current_severity": _severity(current),
+                "status": current.get("status"),
+            }
+        )
+
+    trends.sort(
+        key=lambda item: (
+            -_SEVERITY_RANK.get(str(item.get("current_severity")), -1),
+            -int(item.get("measurement_count") or 0),
+            -abs(float(item.get("delta") or 0.0)),
+            str(item.get("name") or item.get("key") or ""),
+        )
+    )
+
+    total = len(trends)
+    return trends[:8], total
+
+
+def _analysis_insights(
+    entry: ConfigEntry,
+    current_report: dict[str, Any],
+    previous_report: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Build a compact latest-change and multi-report trend payload."""
+    if previous_report is None:
+        return None
+
+    previous_metadata = previous_report.get("metadata", {})
+    changes = _analysis_change_items(current_report, previous_report)
+    trends, trend_total = _analysis_trends(entry, current_report)
+
+    counts = Counter(item["kind"] for item in changes)
+    return {
+        "compared_to": {
+            "analysis_number": previous_metadata.get("analysis_number"),
+            "analysis_date": previous_metadata.get("analysis_date"),
+            "sample_taken": previous_metadata.get("sample_taken"),
+            "provider": _report_provider(previous_report),
+            "provider_name": _report_provider_name(previous_report),
+            "report_type": _report_type(previous_report),
+        },
+        "status_change_counts": {
+            "new_issue": counts.get("new_issue", 0),
+            "worsened": counts.get("worsened", 0),
+            "resolved": counts.get("resolved", 0),
+            "improved": counts.get("improved", 0),
+        },
+        "changes": changes,
+        "trends": trends,
+        "trend_count": trend_total,
+        "trend_items_limited": trend_total > len(trends),
+    }
+
+
 def _status_counts(report: dict[str, Any]) -> dict[str, int]:
     """Count provider-normalized status severities."""
     counts = Counter(
@@ -522,6 +835,11 @@ class ReefReportSensor(ReefBaseSensor):
             else None,
             "previous_report_type": _report_type(self._previous_report),
             "status_counts": _status_counts(self._report),
+            "analysis_insights": _analysis_insights(
+                self._entry,
+                self._report,
+                self._previous_report,
+            ),
             "measurements": self._measurements,
             "interpretation": self._report.get("interpretation"),
             "product_recommendations": self._report.get("product_recommendations"),
