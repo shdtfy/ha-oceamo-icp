@@ -747,6 +747,214 @@ def _stocking_profile_insights(
     }
 
 
+
+def _action_plan(
+    report: dict[str, Any],
+    measurements: list[dict[str, Any]],
+    laboratory_recommendations: dict[str, Any] | None,
+    supply_recommendations: dict[str, Any] | None,
+    stocking_profile_insights: dict[str, Any] | None,
+    analysis_insights: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Build a compact plan from already existing recommendation sources.
+
+    The plan never invents a new dose. Laboratory instructions and Reef ICP
+    supply-system calculations remain separate source actions. If both sources
+    provide an action for the same analyte, the frontend can warn the user not
+    to add the doses together.
+    """
+    measurement_by_key = {
+        str(measurement.get("key") or ""): measurement
+        for measurement in measurements
+        if measurement.get("key")
+    }
+    items_by_key: dict[str, dict[str, Any]] = {}
+
+    def ensure_item(key: str, fallback: dict[str, Any] | None = None) -> dict[str, Any]:
+        measurement = measurement_by_key.get(key, fallback or {})
+        item = items_by_key.get(key)
+        if item is None:
+            item = {
+                "key": key,
+                "name": measurement.get("name") or key,
+                "category": measurement.get("category"),
+                "unit": measurement.get("unit"),
+                "current": measurement.get("value"),
+                "current_raw_value": measurement.get("raw_value"),
+                "severity": _severity(measurement),
+                "status": measurement.get("status"),
+                "target": measurement.get("target"),
+                "actions": [],
+                "signals": [],
+            }
+            items_by_key[key] = item
+        return item
+
+    # 1) Laboratory-provided instructions, preserved as their own source.
+    if isinstance(laboratory_recommendations, dict):
+        laboratory_source_name = (
+            laboratory_recommendations.get("provider_name")
+            or laboratory_recommendations.get("provider")
+            or "Laboratory"
+        )
+        for lab_item in laboratory_recommendations.get("items", []):
+            if not isinstance(lab_item, dict):
+                continue
+            key = str(lab_item.get("key") or "")
+            recommendation = lab_item.get("recommendation")
+            if not key or not isinstance(recommendation, dict):
+                continue
+
+            action_type = str(recommendation.get("type") or "")
+            if action_type not in {"dose", "water_change"}:
+                continue
+
+            item = ensure_item(key, lab_item)
+            item["actions"].append(
+                {
+                    "source": "laboratory",
+                    "source_name": laboratory_source_name,
+                    "action": action_type,
+                    "product": recommendation.get("product"),
+                    "amount_ml": recommendation.get("amount_ml"),
+                    "days": recommendation.get("days"),
+                    "one_time_ml": recommendation.get("one_time_ml"),
+                    "daily_ml": recommendation.get("daily_ml"),
+                    "aquarium_volume_l": recommendation.get("aquarium_volume_l"),
+                }
+            )
+
+    # 2) Reef ICP calculations for the selected supply system.
+    if isinstance(supply_recommendations, dict):
+        supply_source_name = (
+            supply_recommendations.get("system_name")
+            or supply_recommendations.get("system")
+            or "Supply system"
+        )
+        for supply_item in supply_recommendations.get("items", []):
+            if not isinstance(supply_item, dict):
+                continue
+
+            key = str(supply_item.get("key") or "")
+            action_type = str(supply_item.get("action") or "")
+            if not key or action_type not in {
+                "correction_dose",
+                "reduce_or_pause",
+                "official_calculator",
+                "requires_icp_ms",
+            }:
+                continue
+
+            item = ensure_item(key, supply_item)
+            item["actions"].append(
+                {
+                    "source": "supply_system",
+                    "source_name": supply_source_name,
+                    "action": action_type,
+                    "product": supply_item.get("product"),
+                    "solution": supply_item.get("solution"),
+                    "dose_amount": supply_item.get("dose_amount"),
+                    "dose_unit": supply_item.get("dose_unit"),
+                    "split_days": supply_item.get("split_days"),
+                    "daily_dose_amount": supply_item.get("daily_dose_amount"),
+                    "daily_limit_known": supply_item.get("daily_limit_known"),
+                    "source_url": supply_item.get("source_url"),
+                }
+            )
+
+    # 3) Stocking-profile context. This is a signal, never a new dose/action.
+    if isinstance(stocking_profile_insights, dict):
+        for profile_item in stocking_profile_insights.get("items", []):
+            if not isinstance(profile_item, dict):
+                continue
+            key = str(profile_item.get("key") or "")
+            if not key:
+                continue
+
+            item = ensure_item(key, profile_item)
+            item["signals"].append(
+                {
+                    "source": "stocking_profile",
+                    "attention": profile_item.get("attention"),
+                    "context": profile_item.get("context"),
+                    "current_issue": profile_item.get("current_issue"),
+                    "trend_direction": profile_item.get("trend_direction"),
+                    "trend_measurement_count": profile_item.get(
+                        "trend_measurement_count"
+                    ),
+                }
+            )
+
+    # 4) Latest-vs-previous comparison. Only changes needing attention are
+    # promoted into the action plan. Improvements stay in the comparison panel.
+    if isinstance(analysis_insights, dict):
+        for change in analysis_insights.get("changes", []):
+            if not isinstance(change, dict):
+                continue
+            if change.get("kind") not in {"new_issue", "worsened"}:
+                continue
+            key = str(change.get("key") or "")
+            if not key:
+                continue
+
+            item = ensure_item(key, change)
+            item["signals"].append(
+                {
+                    "source": "comparison",
+                    "kind": change.get("kind"),
+                    "previous": change.get("previous"),
+                    "previous_raw_value": change.get("previous_raw_value"),
+                }
+            )
+
+    if not items_by_key:
+        return None
+
+    actionable_sources = {"laboratory", "supply_system"}
+
+    for item in items_by_key.values():
+        source_types = {
+            str(action.get("source"))
+            for action in item["actions"]
+            if action.get("source") in actionable_sources
+        }
+        item["multiple_action_sources"] = len(source_types) > 1
+        item["has_action"] = bool(item["actions"])
+
+    severity_rank = {
+        "critical": 0,
+        "warning": 1,
+        "unknown": 2,
+        "ok": 3,
+    }
+    items = sorted(
+        items_by_key.values(),
+        key=lambda item: (
+            0 if item.get("has_action") else 1,
+            severity_rank.get(str(item.get("severity")), 9),
+            0 if item.get("multiple_action_sources") else 1,
+            str(item.get("name") or item.get("key") or ""),
+        ),
+    )
+
+    metadata = report.get("metadata", {})
+    total = len(items)
+    visible_items = items[:8]
+
+    return {
+        "analysis_number": metadata.get("analysis_number"),
+        "analysis_date": metadata.get("analysis_date"),
+        "provider": _report_provider(report),
+        "provider_name": _report_provider_name(report),
+        "report_type": _report_type(report),
+        "items": visible_items,
+        "item_count": total,
+        "items_limited": total > len(visible_items),
+        "action_item_count": sum(1 for item in items if item.get("has_action")),
+        "review_item_count": sum(1 for item in items if not item.get("has_action")),
+    }
+
+
 def _status_counts(report: dict[str, Any]) -> dict[str, int]:
     """Count provider-normalized status severities."""
     counts = Counter(
@@ -1026,11 +1234,23 @@ class ReefReportSensor(ReefBaseSensor):
             self._measurements,
             analysis_insights,
         )
+        laboratory_recommendations = _laboratory_recommendations(
+            self._report,
+            self._measurements,
+        )
         supply_recommendations = build_supply_recommendations(
             profile.get("supply_system"),
             profile.get("aquarium_volume_l"),
             self._measurements,
             _report_type(self._report),
+        )
+        action_plan = _action_plan(
+            self._report,
+            self._measurements,
+            laboratory_recommendations,
+            supply_recommendations,
+            stocking_profile_insights,
+            analysis_insights,
         )
 
         return {
@@ -1058,11 +1278,9 @@ class ReefReportSensor(ReefBaseSensor):
             "measurements": self._measurements,
             "interpretation": self._report.get("interpretation"),
             "product_recommendations": self._report.get("product_recommendations"),
-            "laboratory_recommendations": _laboratory_recommendations(
-                self._report,
-                self._measurements,
-            ),
+            "laboratory_recommendations": laboratory_recommendations,
             "supply_recommendations": supply_recommendations,
+            "action_plan": action_plan,
             "stored_report_count": len(_reports(self._entry)),
             "stored_reports": _stored_report_summary(self._entry),
         }
