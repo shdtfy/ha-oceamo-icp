@@ -203,6 +203,10 @@ stocking_profile_insights:
 
 The bundled card renders these values in a separate **Stocking profile insights** panel.
 
+From version `0.12.1`, profile hints are grouped by context so shared explanatory text is shown only once per chemistry area. Individual analyte rows remain compact.
+
+Profile insights also distinguish between a real numeric target comparison and a non-numeric laboratory result. For example, `n.n.` can be shown as **not detectable and flagged by the laboratory**, but Reef ICP does not claim that a non-detect has a calculable distance outside a numeric target range.
+
 ### Important limitations
 
 `SPS` and `LPS` are practical aquarium-husbandry labels, not strict scientific taxonomic groups. Coral responses also differ by species, light, feeding, nutrient balance, carbonate chemistry and many other factors.

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.12.1 - Development
+
+### Fixed
+
+- Profile insights no longer describe a non-numeric result such as `n.n.` as being numerically outside the laboratory target range.
+- Added `target_comparable` and `current_target_distance` to profile-insight items so the card can distinguish numeric target deviations from laboratory non-detect / not-determined states.
+- `n.n.` is now shown as **Not detectable · flagged by the laboratory** when the laboratory status is abnormal.
+- `n.b.`, `n.g.` and ATI `---` are shown as **Not determined · flagged by the laboratory** instead of implying a numeric target-distance judgment.
+
+### Changed
+
+- Reduced repetition in the **Stocking profile insights** panel.
+- Profile hints are now grouped by context such as **carbonate chemistry**, **nutrient trend** and **salinity**.
+- The explanatory text and relevance badge are shown once per context group instead of being repeated on every analyte card.
+- Individual analyte rows are more compact and focus on value, current laboratory signal and repeated trend.
+
 ## 0.12.0 - Development
 
 ### Added
