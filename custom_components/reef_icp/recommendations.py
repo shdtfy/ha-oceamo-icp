@@ -290,6 +290,18 @@ _FAUNA_ELEMENTALS_RULES: dict[str, dict[str, Any]] = {
         source_name="Fauna Marin Elementals Trace",
         source_url="https://www.faunamarin.de/elementals-trace-rb/",
     ),
+    "selen": _rule(
+        name="Selen",
+        product="Fauna Marin Elementals Trace Se",
+        kind="single_element",
+        dose_amount=1.0,
+        dose_unit="ml",
+        increase=0.5,
+        unit="µg/l",
+        max_daily_increase=1.0,
+        source_name="Fauna Marin Elementals Trace",
+        source_url="https://www.faunamarin.de/elementals-trace-se/",
+    ),
 }
 
 
