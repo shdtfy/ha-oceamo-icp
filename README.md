@@ -183,6 +183,13 @@ The action plan may group, per analyte:
 
 The plan does **not** create a second dose. Laboratory instructions and Reef ICP supply-system calculations remain separate and are labeled by source. If both sources provide an action for the same analyte, the card warns the user not to add the doses together.
 
+From version `0.13.1`, the card separates the plan into:
+
+- **Act**: concrete laboratory or supply-system actions,
+- **Observe**: worsening comparison signals and repeated numeric trends that do not carry their own dosing instruction.
+
+Plain stocking-profile relevance is intentionally not repeated in the action plan. It stays in the dedicated **Stocking profile insights** panel unless the profile contributes a repeated up/down trend.
+
 Example backend structure:
 
 ```yaml
@@ -201,6 +208,10 @@ action_plan:
           dose_amount: 2.268
           dose_unit: ml
       multiple_action_sources: true
+  action_items:
+    - key: iod
+  review_items:
+    - key: alkalinitaet
 ```
 
 ### Card visibility controls

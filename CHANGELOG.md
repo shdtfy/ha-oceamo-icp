@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.13.1 - Development
+
+### Changed
+
+- Split the **Action plan** into two visual groups:
+  - **Act** for concrete laboratory or supply-system actions,
+  - **Observe** for worsening comparison signals and repeated trends without a separate dosing instruction.
+- Concrete actions always stay above observation-only items.
+- Added explicit `action_items` and `review_items` arrays to the `action_plan` payload while preserving the existing `items` array for backwards compatibility.
+- Added visible-group counts to the action plan payload and card.
+
+### Reduced noise
+
+- Removed generic stocking-profile-only **Observe** entries from the action plan when they contain no repeated trend and no concrete action.
+- Stocking-profile relevance without an additional trend remains available in the dedicated **Stocking profile insights** panel, where it has more context.
+- Profile signals inside the action plan are now reserved for repeated up/down trends that add information to the next decision.
+
+### Unchanged safeguards
+
+- Laboratory and supply-system actions remain separate.
+- Reef ICP still never adds laboratory and calculated doses together.
+- The action plan still does not invent a new correction dose.
+
 ## 0.13.0 - Development
 
 ### Added
