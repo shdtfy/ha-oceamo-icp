@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.11.1 - Development
+
+### Added
+
+- Added a provider-confirmation step after uploading an ICP PDF during both initial setup and later imports.
+- The confirmation view shows the automatically detected laboratory and, when already available, the report type, analysis ID and analysis date.
+- Users can override the detected laboratory with any supported provider before the report is stored.
+- Added explicit provider parsing so the manually selected parser validates the PDF instead of silently trusting the override.
+
+### Changed
+
+- Uploaded PDFs remain temporarily preserved until provider confirmation and any required manual analysis-date step are complete.
+- A selected provider is retained through the manual analysis-date fallback, so an override is not lost when the report needs a date.
+- Updated the integration version to `0.11.1`.
+
 ## 0.11.0 - Development
 
 ### Changed

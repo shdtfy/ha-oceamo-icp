@@ -216,7 +216,9 @@ Measurements that are not directly comparable remain separate. For example, Faun
 
 Open **Settings → Devices & services → Reef ICP → Configure → Import another ICP analysis** and upload the ICP PDF.
 
-**Reef ICP detects the laboratory automatically.** The detector checks several provider-specific fingerprints in the PDF and then routes the file to the matching parser. The parser validates the detected format again before anything is stored.
+**Reef ICP detects the laboratory automatically.** After upload, a confirmation step shows the detected provider plus the report type, analysis ID and date when available. You can confirm the result or select another supported provider before the report is stored.
+
+The selected provider parser validates the PDF again. A manual override therefore does not force an incompatible report into the wrong parser: if the PDF does not match the selected laboratory, the import stops with an error.
 
 Currently detected automatically:
 
@@ -246,6 +248,7 @@ A manually selected date is stored with `analysis_date_source: manual`.
 - Add **Reef ICP** under **Settings → Devices & services**
 - Create an aquarium profile with net water volume and a persistent dosing/supply system
 - Import ICP PDFs directly in Home Assistant
+- Confirm or override the automatically detected ICP provider before a report is stored
 - Store up to 100 reports per aquarium
 - Keep reports in chronological sample order
 - Keep the newest report as the current sensor state
@@ -394,6 +397,7 @@ Version `0.11.0` completed the project-wide namespace rename. Existing test inst
 - [x] Fauna Marin Reef ICP PDF parser
 - [x] Current ATI laboratory PDF parser
 - [x] Automatic provider detection during import
+- [x] Provider confirmation and manual override with parser re-validation
 - [x] Cross-provider normalized history
 - [x] Long-term statistics
 - [x] Previous-ICP comparison
