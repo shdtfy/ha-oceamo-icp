@@ -34,6 +34,7 @@ def _rule(
     source_url: str,
     max_daily_increase: float | None = None,
     solution: str | None = None,
+    requires_report_type: str | None = None,
 ) -> dict[str, Any]:
     """Return one manufacturer dosing rule."""
     return {
@@ -46,6 +47,7 @@ def _rule(
         "unit": unit,
         "max_daily_increase": max_daily_increase,
         "solution": solution,
+        "requires_report_type": requires_report_type,
         "source_name": source_name,
         "source_url": source_url,
     }
@@ -666,6 +668,19 @@ _OCEAMO_SINGLE_ELEMENT_RULES: dict[str, dict[str, Any]] = {
         source_name="Oceamo Single Elements",
         source_url="https://oceamo.com/product-page/single-elements-rubidium/",
     ),
+    "selen": _rule(
+        name="Selen",
+        product="Oceamo Single Elements Selen",
+        kind="single_element",
+        dose_amount=1.0,
+        dose_unit="ml",
+        increase=0.05,
+        unit="µg/l",
+        max_daily_increase=0.05,
+        requires_report_type="reef_icp_ms",
+        source_name="Oceamo Single Elements",
+        source_url="https://oceamo.com/product-page/single-elements-selen-1000-ml/",
+    ),
     "strontium": _rule(
         name="Strontium",
         product="Oceamo Single Elements Strontium",
@@ -764,6 +779,49 @@ def _measurement_needs_action(measurement: dict[str, Any]) -> bool:
     """Return whether the provider marked this measurement for attention."""
     severity = str((measurement.get("status") or {}).get("severity", "unknown"))
     return severity in {"warning", "critical"}
+
+
+def _report_type_restriction_notice(
+    measurement: dict[str, Any],
+    rule: dict[str, Any],
+    report_type: str | None,
+) -> dict[str, Any] | None:
+    """Return an informational item when a low correction needs another method."""
+    required_report_type = rule.get("requires_report_type")
+    if (
+        not required_report_type
+        or report_type == required_report_type
+        or not _measurement_needs_action(measurement)
+    ):
+        return None
+
+    relation, target_value = _target_relation(measurement)
+    direction = str((measurement.get("status") or {}).get("direction") or "")
+
+    # The restriction only blocks an upward correction. An elevated result can
+    # still safely produce the generic "reduce or pause" guidance because no
+    # supplement dose is calculated from that measurement.
+    if relation != "low" and not (relation is None and direction == "low"):
+        return None
+
+    current = measurement.get("value")
+    return {
+        "key": str(measurement.get("key", "")),
+        "name": rule["name"],
+        "product": rule["product"],
+        "solution": rule.get("solution"),
+        "kind": rule["kind"],
+        "current": float(current) if isinstance(current, (int, float)) else None,
+        "target": float(target_value) if target_value is not None else None,
+        "unit": measurement.get("unit") or rule["unit"],
+        "severity": str(
+            (measurement.get("status") or {}).get("severity", "unknown")
+        ),
+        "action": "requires_icp_ms",
+        "required_report_type": str(required_report_type),
+        "source_name": rule["source_name"],
+        "source_url": rule["source_url"],
+    }
 
 
 def _generic_correction(
@@ -943,6 +1001,7 @@ def build_supply_recommendations(
     supply_system: str | None,
     aquarium_volume_l: Any,
     measurements: list[dict[str, Any]],
+    report_type: str | None = None,
 ) -> dict[str, Any] | None:
     """Build provider-independent recommendations for the selected system."""
     if not supply_system or supply_system == "none":
@@ -1001,19 +1060,25 @@ def build_supply_recommendations(
             "items": [],
         }
 
-    items = [
-        item
-        for measurement in measurements
-        if (rule := rules.get(str(measurement.get("key", "")))) is not None
-        and (
-            item := _generic_correction(
+    items: list[dict[str, Any]] = []
+    for measurement in measurements:
+        rule = rules.get(str(measurement.get("key", "")))
+        if rule is None:
+            continue
+
+        item = _report_type_restriction_notice(
+            measurement,
+            rule,
+            report_type,
+        )
+        if item is None:
+            item = _generic_correction(
                 measurement,
                 volume_l,
                 rule,
             )
-        )
-        is not None
-    ]
+        if item is not None:
+            items.append(item)
 
     return {
         "system": supply_system,

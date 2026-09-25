@@ -443,6 +443,7 @@ class ReefReportSensor(ReefBaseSensor):
             profile.get("supply_system"),
             profile.get("aquarium_volume_l"),
             self._measurements,
+            _report_type(self._report),
         )
 
         return {
