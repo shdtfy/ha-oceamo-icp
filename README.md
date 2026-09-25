@@ -170,6 +170,24 @@ These settings remain attached to the aquarium when additional reports from Ocea
 
 This is the foundation for a provider-independent recommendation engine: laboratory measurements stay normalized by Reef ICP, while dosing recommendations can be generated for the aquarium's chosen supply system and net water volume rather than blindly copying the laboratory's product recommendations.
 
+## Latest-analysis changes and repeated trends
+
+Starting with version `0.11.8`, Reef ICP can summarize what changed since the previous imported ICP without altering the laboratory data.
+
+The `ICP Status` sensor exposes an `analysis_insights` payload with:
+
+- status transitions between the newest and immediately previous report,
+- newly abnormal values,
+- values that returned to OK,
+- warning / critical escalation or improvement,
+- repeated numeric measurement trends across stored reports.
+
+A repeated trend is created only after at least **three numeric measurements** of the same normalized analyte and unit move consecutively in one direction. For example, an iodine value that falls across three stored measurements can be shown as a repeated downward measurement trend.
+
+These trends are deliberately descriptive. A rising or falling concentration is **not automatically classified as good or bad**. Biological interpretation depends on the analyte, target, aquarium context and later evidence-based stocking-profile logic.
+
+The bundled dashboard card shows this information in a separate **Since the previous ICP** panel. Up to eight current repeated trends are shown, prioritizing parameters with warning or critical status.
+
 ## Supply-system recommendations
 
 Reef ICP keeps the laboratory interpretation separate from the aquarium's own supply system. The ICP provider can therefore change while recommendations continue to follow the products actually used on the aquarium.
@@ -437,6 +455,7 @@ Version `0.11.0` completed the project-wide namespace rename. Existing test inst
 - [x] Show laboratory interpretation / evaluation text inside the card when present
 - [x] Show laboratory dosing recommendations inside the card
 - [x] Persistent aquarium stocking profile with dashboard display
+- [x] Latest-analysis status-change summary and repeated multi-report trends
 - [ ] Evidence-based stocking-profile-aware interpretation and prioritization
 - [ ] Older ATI layouts and ATI Pro / Ultimate-MS variants
 - [x] Oceamo Reef ICP-MS / current ICP-MS report layout

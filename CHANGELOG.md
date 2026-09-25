@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.11.8 - Development
+
+### Added
+
+- Added a provider-independent **Since the previous ICP** analysis summary to the `ICP Status` sensor and dashboard card.
+- Reef ICP now detects normalized status transitions between the newest and immediately previous report:
+  - newly abnormal values,
+  - values that returned to OK,
+  - warning-to-critical escalation,
+  - critical-to-warning improvement.
+- Added descriptive multi-report measurement trends. A trend is shown after at least **three numeric measurements** of the same normalized analyte and unit move consecutively in the same direction.
+- The trend payload includes direction, streak length, start/current values and current status.
+- The dashboard card displays status changes and up to eight current repeated trends in a separate collapsible panel.
+
+### Important
+
+- Trend detection describes the direction of measured values only. It does not automatically interpret a rising or falling value as biologically good or bad.
+- Unknown provider states are excluded from status-transition judgments.
+- Stocking profile still does not change targets, severity or dosing calculations. Profile-aware interpretation remains a later, evidence-based step.
+
 ## 0.11.7 - Development
 
 ### Added
