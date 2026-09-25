@@ -330,6 +330,8 @@ When the imported PDF contains recommendation data, the card adds a collapsed **
 
 These values are displayed as imported laboratory information. Reef ICP does not recalculate them. The separate **Recommendations for your supply system** panel remains the provider-independent Reef ICP calculation based on the aquarium's stored net volume and selected dosing system.
 
+For the frontend, Reef ICP also exposes a dedicated `laboratory_recommendations` payload on the `ICP Status` sensor. This keeps laboratory-provided instructions separate from the generic measurement list and from Reef ICP's own supply-system calculations.
+
 ## Status handling
 
 Oceamo status levels come directly from the rating artwork embedded in the report. Reef ICP recognizes the tested classic and current ICP-MS icon variants by Oceamo's green / yellow / red status colors and arrow direction, while retaining exact known classic icon hashes as a compatibility path.

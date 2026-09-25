@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.11.6 - Development
+
+### Fixed
+
+- Fixed the laboratory-recommendation panel not appearing even when Fauna Marin recommendations were present in the parsed report.
+- Added an explicit `laboratory_recommendations` payload to the `ICP Status` sensor instead of relying only on the dashboard card to discover nested recommendation objects inside the generic measurement list.
+- The dashboard card now prefers the explicit backend payload and retains the previous per-measurement scan as a compatibility fallback.
+- Bumped the bundled card cache version so Home Assistant loads the corrected frontend immediately after restart.
+
+### Tested
+
+- Fauna Marin report `074421I` from 21.09.2022 contains **8 laboratory recommendations** in the parser output, including dosage entries for Strontium, Iod, Kupfer, Eisen, Chrom and Cobalt plus water-change guidance for Calcium and Zink.
+
 ## 0.11.5 - Development
 
 ### Added
