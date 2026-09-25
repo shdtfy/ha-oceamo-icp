@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.10.0 - Development
+
+### Added
+
+- Expanded the provider-independent recommendation engine beyond Fauna Marin Balling Light.
+- Added **ATI Essentials pro** correction support using published **ATI ICP Elements** product strengths.
+- Added **Oceamo DUO** KH correction plus supported **Oceamo Single Elements** corrections.
+- Added **TRITON Method / Core7 Flex** recommendation guidance using TRITON's official single-element and Core7 calculators instead of inventing unpublished concentration factors.
+- Added individual element correction calculations for supported trace/minor elements such as **Iod, Fluorid, Molybdän, Mangan, Lithium, Kalium, Bor and Strontium**.
+- Added manufacturer source links to each generated recommendation.
+- Added automatic multi-day splitting when the manufacturer publishes a maximum daily concentration increase.
+- Added generic dose-unit support so recommendations can represent both liquid `ml` and solid `g` products.
+
+### Changed
+
+- The recommendation card now distinguishes **Grundversorgung** and **Einzelelement** corrections.
+- Daily maintenance guidance is now specific to the selected supply system.
+- If a manufacturer strength is known but no official daily maximum is implemented, Reef ICP shows the total correction with a warning instead of inventing a daily schedule.
+- Updated the bundled dashboard card cache and integration version to `0.10.0`.
+
+### Safety / scope
+
+- Calculated values are correction doses derived from normalized ICP values, aquarium net volume and published manufacturer product strengths.
+- Reef ICP does not treat these correction values as permanent daily maintenance doses.
+- TRITON numeric single-element dosing remains delegated to TRITON's official calculator because the public calculator exposes the result rather than a static concentration table.
+
+
 ## 0.9.2 - Development
 
 ### Fixed

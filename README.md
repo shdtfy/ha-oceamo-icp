@@ -167,19 +167,30 @@ This is the foundation for a provider-independent recommendation engine: laborat
 
 ## Supply-system recommendations
 
-Reef ICP keeps laboratory interpretation separate from the aquarium's own supply system.
+Reef ICP keeps the laboratory interpretation separate from the aquarium's own supply system. The ICP provider can therefore change while recommendations continue to follow the products actually used on the aquarium.
 
-Starting with version `0.9.1`, **Fauna Marin Balling Light** has an initial provider-independent correction engine for the three core Balling Light solutions:
+Starting with version `0.10.0`, the recommendation engine supports:
 
-- Calcium / canister 1
-- Magnesium / canister 2
-- Alkalinity / canister 3
+- **Fauna Marin Balling Light** core corrections plus a broad set of **Fauna Marin Elementals / Elementals Trace** single-element corrections.
+- **ATI Essentials pro** with **ATI ICP Elements** for provider-independent correction of major, minor and trace-element deficiencies.
+- **Oceamo DUO** with numeric DUO-KH correction plus **Oceamo Single Elements** for supported individual deficiencies.
+- **TRITON Method / Core7 Flex** as an official-calculator workflow. Reef ICP identifies the deficient TRITON single element and links to TRITON's own calculator instead of copying an unpublished product concentration.
 
-The correction uses the aquarium's stored net water volume and the normalized current/target values from the imported ICP, so the calculation works regardless of which supported laboratory produced the report.
+Examples of automatically calculated single-element corrections include iodine, fluoride, molybdenum, manganese, lithium, potassium, boron, strontium and additional supported analytes depending on the selected supply system.
 
-The current Balling Light implementation uses the manufacturer's standard working-solution strengths. Calculated amounts are shown as **correction doses**, not as permanent daily maintenance doses. Daily Balling Light dosing must still be adjusted to the aquarium's real consumption.
+The calculation uses:
 
-Automatic Balling Trace / Elementals trace-element correction is intentionally not calculated yet because those products require additional product-specific limits and, for Balling Trace adjustments, information about the current stock-solution recipe and remaining canister volume.
+1. the aquarium's stored **net water volume**,
+2. the normalized current ICP value,
+3. the target value/range in the imported report, and
+4. the published manufacturer strength of the selected product.
+
+When the manufacturer publishes a maximum daily increase, Reef ICP also calculates a minimum number of dosing days and an approximate amount per day. If no official daily limit is available in the implemented source data, the card deliberately shows only the total correction and warns against interpreting it as an automatic one-time dose.
+
+Calculated amounts are **correction doses**, not permanent daily maintenance doses. Balling Light, ATI Essentials pro, Oceamo DUO and TRITON Core7 remain consumption-driven systems for ongoing daily dosing.
+
+Manufacturer formulations can change. Reef ICP therefore surfaces the manufacturer source used for each recommendation and users should confirm the current product label before dosing.
+
 
 ## Multi-provider history
 
