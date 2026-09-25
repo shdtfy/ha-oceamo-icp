@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.11.2 - Development
+
+### Added
+
+- Added **Oceamo Single Elements Selen** correction support.
+- Oceamo Selen uses the published strength of 1 ml per 100 l for +0.05 µg/l and the published maximum daily increase of +0.05 µg/l.
+- Selen correction is calculated only when the current report is an Oceamo Reef ICP-MS report (`reef_icp_ms`).
+
+### Safety
+
+- Oceamo states that selenium should only be dosed from an ICP-MS analysis because the recommended range lies below the reliable ICP-OES detection limit.
+- A low selenium result from a non-ICP-MS report therefore produces an informational `requires_icp_ms` recommendation instead of a calculated supplement dose.
+- Elevated selenium can still produce the existing reduce/pause guidance because that action does not calculate an addition dose.
+
+### Changed
+
+- The recommendation engine now receives the current report type so product rules can require a specific analytical method.
+- Updated the integration and bundled dashboard card version to `0.11.2`.
+
 ## 0.11.1 - Development
 
 ### Added

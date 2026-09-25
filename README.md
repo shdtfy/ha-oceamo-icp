@@ -191,6 +191,12 @@ Calculated amounts are **correction doses**, not permanent daily maintenance dos
 
 Manufacturer formulations can change. Reef ICP therefore surfaces the manufacturer source used for each recommendation and users should confirm the current product label before dosing.
 
+### ICP-MS-only corrections
+
+Some ultra-trace corrections require a sufficiently sensitive analytical method. Reef ICP can enforce that requirement per product rule instead of calculating from an unsuitable report.
+
+For **Oceamo Single Elements Selen**, Reef ICP uses Oceamo's published strength of **1 ml per 100 l for +0.05 µg/l** and maximum daily increase of **+0.05 µg/l**, but only calculates an upward correction from an **Oceamo Reef ICP-MS** report (`reef_icp_ms`). Oceamo states that the recommended selenium range is below the reliable detection limit of ICP-OES. A low selenium result from another report type therefore shows an ICP-MS requirement instead of a dose.
+
 ## Multi-provider history
 
 Reports from different providers can be stored in the same aquarium.
