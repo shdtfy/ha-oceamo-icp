@@ -21,7 +21,7 @@ from .statistics import (
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
-CARD_VERSION = "0.9.1"
+CARD_VERSION = "0.10.0"
 CARD_URL = "/oceamo_icp/oceamo-icp-card.js"
 CARD_RESOURCE_URL = f"{CARD_URL}?v={CARD_VERSION}"
 CARD_FILE = Path(__file__).parent / "www" / "oceamo-icp-card.js"
