@@ -170,6 +170,70 @@ These settings remain attached to the aquarium when additional reports from Ocea
 
 This is the foundation for a provider-independent recommendation engine: laboratory measurements stay normalized by Reef ICP, while dosing recommendations can be generated for the aquarium's chosen supply system and net water volume rather than blindly copying the laboratory's product recommendations.
 
+## Stocking-profile insights
+
+Starting with version `0.12.0`, the stored stocking profile can add a separate context layer to the dashboard.
+
+This layer is deliberately **not another laboratory status system**. It does not replace or recalculate imported target ranges. Instead, Reef ICP can bring a small set of already-measured chemistry areas to the user's attention based on the selected aquarium profile.
+
+Current profile-aware contexts are intentionally conservative:
+
+- **Carbonate chemistry**: alkalinity and calcium
+- **Nutrients**: nitrate plus supported phosphate / phosphorus measurements
+- **Salinity**
+
+For example:
+
+- an **SPS-dominant** aquarium can give extra attention to carbonate chemistry, salinity and repeated nutrient trends,
+- an **LPS-dominant** or **Mixed Reef** aquarium keeps carbonate chemistry and salinity prominent while treating nutrient deviations more contextually,
+- **Soft-coral dominant** and **Fish Only** profiles do not receive an extra stony-coral calcification priority for alkalinity/calcium.
+
+The result is exposed on the `ICP Status` sensor as:
+
+```yaml
+stocking_profile_insights:
+  profile: sps_dominant
+  mode: context_only
+  items:
+    - key: alkalinitaet
+      context: carbonate
+      attention: high
+      current_issue: true
+```
+
+The bundled card renders these values in a separate **Stocking profile insights** panel.
+
+### Important limitations
+
+`SPS` and `LPS` are practical aquarium-husbandry labels, not strict scientific taxonomic groups. Coral responses also differ by species, light, feeding, nutrient balance, carbonate chemistry and many other factors.
+
+Reef ICP therefore does **not** apply fixed rules such as:
+
+```text
+SPS target = X
+LPS target = Y
+```
+
+and does not apply profile multipliers to dosing.
+
+The profile is used only to prioritize attention. Laboratory target ranges, normalized Reef ICP status and supply-system recommendations remain separate.
+
+### Scientific basis for the first profile rules
+
+The first rules are intentionally narrow and are based on broad physiological principles rather than hobby folklore:
+
+- Stony corals form calcium-carbonate skeletons, and calcium plus carbonate-system chemistry are fundamental to calcification:  
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC3159950/
+- Experimental work in *Acropora cervicornis* shows calcification and linear extension responding to alkalinity manipulation, but it does not establish one universal aquarium alkalinity target for all SPS:  
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC13150020/
+- Nutrient effects are not a simple “lower is always better” rule. Experimental and review work shows that nitrogen/phosphorus concentration and balance can alter coral growth, calcification and skeletal properties in different directions depending on context and species:  
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC10276130/  
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC10468396/
+- Soft corals can form calcitic skeletal elements (sclerites), which is one reason Reef ICP deliberately avoids treating soft-coral systems as biologically independent of calcium-carbonate chemistry:  
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC3173117/
+
+These references support the **context categories**, not a new set of Reef ICP target ranges.
+
 ## Latest-analysis changes and repeated trends
 
 Starting with version `0.11.8`, Reef ICP can summarize what changed since the previous imported ICP without altering the laboratory data.
@@ -457,7 +521,8 @@ Version `0.11.0` completed the project-wide namespace rename. Existing test inst
 - [x] Show laboratory dosing recommendations inside the card
 - [x] Persistent aquarium stocking profile with dashboard display
 - [x] Latest-analysis status-change summary and repeated multi-report trends
-- [ ] Evidence-based stocking-profile-aware interpretation and prioritization
+- [x] Evidence-based stocking-profile-aware interpretation and prioritization
+- [ ] Expand profile-aware rules only where defensible evidence and representative reports exist
 - [ ] Older ATI layouts and ATI Pro / Ultimate-MS variants
 - [x] Oceamo Reef ICP-MS / current ICP-MS report layout
 - [x] TRITON legacy ICP-OES (tested 2014 + 2015 layouts)

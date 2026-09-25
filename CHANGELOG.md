@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.12.0 - Development
+
+### Added
+
+- Added a separate **stocking-profile insight** layer to the `ICP Status` sensor and Reef ICP dashboard card.
+- New backend attribute: `stocking_profile_insights`.
+- The selected stocking profile can now influence **what Reef ICP highlights**, while still leaving laboratory status, target ranges and all dosing calculations untouched.
+- Conservative context groups currently implemented:
+  - **carbonate chemistry**: alkalinity and calcium,
+  - **nutrients**: nitrate and supported phosphate/phosphorus measurements,
+  - **salinity**.
+- **SPS-dominant** profiles give additional attention to repeated nutrient trends as well as carbonate chemistry and salinity.
+- **LPS-dominant** and **Mixed Reef** profiles prioritize carbonate chemistry and salinity, while nutrient deviations remain contextual.
+- **Soft-coral dominant** and **Fish Only** do not receive extra coral-calcification priority from alkalinity/calcium; salinity and nutrient context remain available.
+- The card shows up to six profile-specific hints in a separate **Stocking profile insights** panel.
+
+### Safeguards
+
+- No stocking profile changes an imported laboratory target range.
+- No stocking profile changes `ok` / `warning` / `critical` status.
+- No stocking profile changes supply-system correction doses.
+- Non-numeric laboratory states are not converted into profile-specific numeric judgments.
+- SPS/LPS are treated as practical aquarium husbandry profiles, not strict scientific taxonomic groups.
+
+### Scientific basis
+
+The first profile-aware rules are intentionally narrow. Stony-coral calcification depends on calcium and the seawater carbonate system, while nutrient effects on corals are strongly context-, balance- and species-dependent. Soft corals can also biomineralize calcitic sclerites, so Reef ICP deliberately avoids simplistic rules such as “soft corals do not use calcium”.
+
+References used for this development step are documented in the README.
+
 ## 0.11.9 - Development
 
 ### Fixed
