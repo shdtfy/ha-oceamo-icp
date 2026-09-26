@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.13.1 - Development
+## 0.13.2 - Development
 
 ### Added
 
@@ -11,6 +11,13 @@
 - Pending reports use the same provider + provider-report-ID upsert rules as stored reports, so duplicate identities are replaced instead of duplicated.
 - The completed batch is kept in chronological order before it is stored.
 - Replacing an already stored report through a batch import continues to request the existing long-term-statistics rebuild so stale recorder points are removed.
+
+### Versioning
+
+- Bumped the Home Assistant integration version to `0.13.2` so HACS can detect the batch-import build as a new version instead of treating it as the already installed `0.13.1`.
+- The bundled dashboard card remains at `0.13.1` because this release changes the backend/config flow only and does not modify the card frontend.
+
+## 0.13.1 - Development
 
 ### Changed
 
