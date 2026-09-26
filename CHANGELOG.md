@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.13.8 - Development
+
+### Changed
+
+- Osmosis / RO-water measurement entities are now classified as Home Assistant **diagnostic entities**.
+- On the Reef ICP device page, aquarium-water measurements remain under **Sensors**, while osmosis-water measurements are shown separately under **Diagnostics** for a cleaner entity overview.
+
+### Compatibility
+
+- Entity unique IDs, entity IDs, measurement values, stored report data and long-term-statistics identities are unchanged.
+- Existing osmosis entities are reclassified when the integration reloads; no re-import of ICP reports is required.
+- This is a backend/entity-presentation patch only. The bundled Reef ICP dashboard card remains unchanged at `0.13.7`.
+
 ## 0.13.7 - Development
 
 ### Added
