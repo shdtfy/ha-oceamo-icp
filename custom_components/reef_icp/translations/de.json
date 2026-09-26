@@ -3,13 +3,27 @@
     "step": {
       "user": {
         "title": "Reef ICP",
-        "description": "Lege ein Aquarium mit Netto-Wasservolumen, Besatzprofil und Versorgungssystem an und lade anschließend den ersten ICP-PDF-Bericht hoch. Das Besatzprofil wird zunächst nur gespeichert und angezeigt und beeinflusst noch keine Sollwerte oder Dosierempfehlungen. Reef ICP erkennt das Labor automatisch und lässt dich die Erkennung vor dem Import bestätigen.",
+        "description": "Lege ein Aquarium mit Netto-Wasservolumen, Besatzprofil und Versorgungssystem an und lade den ersten ICP-PDF-Bericht hoch. Nach der Bestätigung kannst du direkt weitere vorhandene ICP-Berichte hinzufügen, bevor das Aquarium angelegt wird. Reef ICP erkennt das Labor automatisch und lässt dich die Erkennung vor dem Import bestätigen.",
         "data": {
           "aquarium_name": "Name des Aquariums",
           "aquarium_volume_l": "Netto-Wasservolumen",
           "stocking_profile": "Besatzprofil",
           "supply_system": "Versorgungssystem",
           "pdf_file": "ICP-PDF-Bericht"
+        }
+      },
+      "add_icp": {
+        "title": "Weitere ICP-Analyse hinzufügen",
+        "description": "Für dieses Aquarium sind bereits {report_count} ICP-Bericht(e) vorbereitet.\n\n{report_list}\n\nLade eine weitere ICP-PDF hoch, um sie demselben Import hinzuzufügen.",
+        "data": {
+          "pdf_file": "ICP-PDF-Bericht"
+        }
+      },
+      "import_more": {
+        "title": "ICP-Berichte vorbereitet",
+        "description": "Vorbereitete ICP-Berichte: {report_count}\n\n{report_list}\n\nDu kannst eine weitere ICP hinzufügen oder das Aquarium jetzt anlegen. Die Berichte werden chronologisch gespeichert. Eine doppelte Analyse mit demselben Anbieter und derselben Berichts-ID ersetzt die frühere Kopie innerhalb dieses Imports.",
+        "data": {
+          "batch_action": "Nächster Schritt"
         }
       },
       "analysis_date": {
@@ -21,7 +35,7 @@
       },
       "confirm_provider": {
         "title": "ICP-Anbieter bestätigen",
-        "description": "Automatisch erkannt: {detected_provider}\n\nBerichtstyp: {report_type}\nAnalysenummer: {analysis_number}\nAnalysedatum: {analysis_date}\n\nBestätige den Anbieter oder wähle ein anderes unterstütztes Labor. Reef ICP prüft die PDF mit dem ausgewählten Parser erneut, bevor sie gespeichert wird.",
+        "description": "Automatisch erkannt: {detected_provider}\n\nBerichtstyp: {report_type}\nAnalysenummer: {analysis_number}\nAnalysedatum: {analysis_date}\n\nBestätige den Anbieter oder wähle ein anderes unterstütztes Labor. Reef ICP prüft die PDF mit dem ausgewählten Parser erneut, bevor sie dem Import hinzugefügt wird.",
         "data": {
           "provider": "ICP-Anbieter"
         }
@@ -41,7 +55,7 @@
       "init": {
         "title": "Reef ICP",
         "menu_options": {
-          "import_icp": "Weitere ICP-Analyse importieren",
+          "import_icp": "ICP-Analysen importieren",
           "aquarium_settings": "Aquarium-Einstellungen"
         }
       },
@@ -53,15 +67,22 @@
         }
       },
       "import_icp": {
-        "title": "Weitere ICP-Analyse importieren",
-        "description": "Lade eine weitere ICP-PDF hoch. Reef ICP erkennt den Anbieter automatisch und lässt dich die Erkennung vor dem Import bestätigen. Ein vorhandener Bericht mit demselben Anbieter und derselben Berichts-ID wird ersetzt.",
+        "title": "ICP-Analysen importieren",
+        "description": "Lade eine ICP-PDF hoch. Reef ICP erkennt den Anbieter automatisch und lässt dich die Erkennung bestätigen. Danach kannst du weitere Berichte zum selben Import hinzufügen. Bereits gespeicherte Berichte mit demselben Anbieter und derselben Berichts-ID werden ersetzt.\n\nAktuell vorbereitete Berichte in diesem Import: {report_count}\n\n{report_list}",
         "data": {
           "pdf_file": "ICP-PDF-Bericht"
         }
       },
+      "import_more": {
+        "title": "ICP-Berichte vorbereitet",
+        "description": "Vorbereitete ICP-Berichte: {report_count}\n\n{report_list}\n\nDu kannst eine weitere ICP hinzufügen oder den Sammelimport abschließen. Die Berichte werden chronologisch in die Aquarium-Historie einsortiert.",
+        "data": {
+          "batch_action": "Nächster Schritt"
+        }
+      },
       "aquarium_settings": {
         "title": "Aquarium-Einstellungen",
-        "description": "Lege Netto-Wasservolumen, Besatzprofil und das dauerhaft verwendete Versorgungssystem fest. Das Besatzprofil dient derzeit nur als gespeicherte Aquarium-Information und verändert noch keine Sollwerte oder Berechnungen. Diese Angaben gelten unabhängig davon, bei welchem Labor die ICP durchgeführt wird.",
+        "description": "Lege Netto-Wasservolumen, Besatzprofil und das dauerhaft verwendete Versorgungssystem fest. Diese Angaben gelten unabhängig davon, bei welchem Labor die ICP durchgeführt wird.",
         "data": {
           "aquarium_volume_l": "Netto-Wasservolumen",
           "stocking_profile": "Besatzprofil",
@@ -70,7 +91,7 @@
       },
       "confirm_provider": {
         "title": "ICP-Anbieter bestätigen",
-        "description": "Automatisch erkannt: {detected_provider}\n\nBerichtstyp: {report_type}\nAnalysenummer: {analysis_number}\nAnalysedatum: {analysis_date}\n\nBestätige den Anbieter oder wähle ein anderes unterstütztes Labor. Reef ICP prüft die PDF mit dem ausgewählten Parser erneut, bevor sie gespeichert wird.",
+        "description": "Automatisch erkannt: {detected_provider}\n\nBerichtstyp: {report_type}\nAnalysenummer: {analysis_number}\nAnalysedatum: {analysis_date}\n\nBestätige den Anbieter oder wähle ein anderes unterstütztes Labor. Reef ICP prüft die PDF mit dem ausgewählten Parser erneut, bevor sie dem Import hinzugefügt wird.",
         "data": {
           "provider": "ICP-Anbieter"
         }
