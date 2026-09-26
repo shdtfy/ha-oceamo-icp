@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.13.6 - Development
+
+### Added
+
+- Aquariums can now be created **without an ICP report**. The first or any later ICP can be imported afterwards through **Configure → Import ICP analyses**.
+- Added an explicit **Other / custom** supply-system option with a separate name field, preserving support for user-defined dosing systems without exposing internal preset IDs.
+- The dashboard now hides a parameter when it has been **not determined in every stored ICP** for that aquarium.
+- A parameter remains visible when it was determined at least once historically and a later ICP reports it as **Not determined**.
+- `n.n.` / **Not detectable** remains visible because it represents an actual analytical result.
+
+### Fixed
+
+- Integrated the personal-target and unknown-state frontend changes directly into the main Reef ICP card so they are reliably applied.
+- Replaced the generic **Unknown** dashboard bucket with **Not detectable**, **Not determined** and **Other unclear** for visible measurements.
+- Personal Salinity / KH / Calcium / Magnesium targets now display directly in the main card alongside the preserved laboratory target.
+- Fixed Home Assistant's closed supply-system selector showing internal values such as `ati_essentials_pro`, `fauna_marin_balling_light` or `none`.
+- Tropic Marin `Odor: none` is displayed as **No odor** / **Kein Geruch** instead of the raw `none` value.
+
+### Internal
+
+- Empty aquariums no longer initialize the ICP sensor platform until the first report is stored, avoiding an empty-history `max()` failure.
+- Stored report measurements receive an `ever_determined` history flag used only for dashboard visibility; source values, laboratory status and long-term statistics remain unchanged.
+- The temporary `reef-icp-card-targets.js` companion patch is no longer loaded; its functionality is consolidated into `reef-icp-card.js`.
+- Bumped the integration and bundled-card cache version to `0.13.6`.
+
+
 ## 0.13.5 - Development
 
 ### Added

@@ -183,9 +183,11 @@ Stocking-profile presets currently include **Mixed Reef**, **SPS-dominant**, **L
 
 The stocking profile is intentionally metadata-only in version `0.11.7`: Reef ICP stores it, exposes it on the `ICP Status` sensor and shows it in the dashboard card, but it does **not** yet alter laboratory status, target ranges or dosing calculations.
 
-Built-in presets currently include **Fauna Marin Balling Light**, **ATI Essentials pro**, **TRITON Method** and **Oceamo DUO**. The selector also accepts a custom system name, and an aquarium can be set to analysis-only mode.
+Built-in presets currently include **Fauna Marin Balling Light**, **ATI Essentials pro**, **TRITON Method** and **Oceamo DUO**. An aquarium can also use **Other / custom** with a separate custom system name, or be set to analysis-only mode.
 
-These settings remain attached to the aquarium when additional reports from Oceamo, Fauna Marin, ATI, TRITON, Tropic Marin or future providers are imported. Existing aquariums can edit the profile through **Configure → Aquarium settings**.
+Starting with version `0.13.6`, the aquarium profile is created independently of laboratory data. A new aquarium therefore does **not** require an ICP report. The first analysis can be imported immediately or at any later time through **Configure → Import ICP analyses**.
+
+These settings remain attached to the aquarium when reports from Oceamo, Fauna Marin, ATI, TRITON, Tropic Marin or future providers are imported. Existing aquariums can edit the profile through **Configure → Aquarium settings**.
 
 ### Personal aquarium target ranges
 
@@ -206,7 +208,9 @@ Supply-system correction calculations use the personal range for these four para
 
 Personal targets do not apply to osmosis / RO-water measurements.
 
-The dashboard also separates unknown laboratory results into **Not detectable**, **Not determined** and **Other unclear** instead of combining all unknown states into one counter.
+The dashboard separates unknown laboratory results into **Not detectable**, **Not determined** and **Other unclear** instead of combining all unknown states into one counter.
+
+To keep provider-specific report layouts from filling the card with permanent grey placeholders, a parameter that has been **not determined in every stored ICP** is hidden from the main card. If that parameter was determined at least once anywhere in the aquarium history, it remains visible when a later report says **Not determined**. A laboratory `n.n.` / **Not detectable** result is a real analytical result and is therefore never hidden by this rule.
 
 This is the foundation for a provider-independent recommendation engine: laboratory measurements stay normalized by Reef ICP, while dosing recommendations can be generated for the aquarium's chosen supply system, net water volume and optional personal operating targets rather than blindly copying the laboratory's product recommendations.
 
@@ -423,7 +427,7 @@ Reef ICP uses a **batch import flow**. Home Assistant's native file selector sti
 4. The confirmed report is added to a temporary import list.
 5. Choose **Add another ICP** to repeat the process or **Finish import** to store the complete batch.
 
-The same batch flow is available while creating a new aquarium. After the first confirmed ICP, you can add older reports before the aquarium entry is finally created. This makes it practical to bring an existing ICP history into Reef ICP from the start.
+Aquarium creation and ICP import are separate starting with version `0.13.6`. Create the aquarium profile first, then open **Configure → Import ICP analyses** whenever you want to add the first report or import an existing history. The batch importer can prepare several reports in one session.
 
 A single batch may contain reports from **different supported laboratories**. Each PDF is detected and validated independently. The final batch is sorted chronologically before it is stored.
 
@@ -460,7 +464,8 @@ A manually selected date is stored with `analysis_date_source: manual`.
 - Add **Reef ICP** under **Settings → Devices & services**
 - Create an aquarium profile with net water volume, a persistent stocking profile, a dosing/supply system and optional personal Salinity/KH/Ca/Mg target ranges
 - Import ICP PDFs directly in Home Assistant
-- Prepare and import several ICP reports in one batch during initial setup or later through Configure
+- Create an aquarium before any ICP report exists, then import analyses later through Configure
+- Prepare and import several ICP reports in one batch through Configure
 - Mix supported providers inside the same import batch while validating every PDF separately
 - Confirm or override the automatically detected ICP provider before a report enters the batch
 - Store up to 100 reports per aquarium
@@ -480,7 +485,9 @@ A manually selected date is stored with `analysis_date_source: manual`.
 
 ## Current entities
 
-For each aquarium, the integration creates:
+An aquarium can exist without an ICP report. In that state the config entry and aquarium settings are available, but no ICP sensor entities are created yet.
+
+After the first ICP is imported, the integration creates:
 
 - `ICP Status`
 - `Analysis date`
@@ -617,8 +624,9 @@ Version `0.11.0` completed the project-wide namespace rename. Existing test inst
 4. Restart Home Assistant.
 5. Go to **Settings → Devices & services → Add integration**.
 6. Search for **Reef ICP**.
-7. Enter the aquarium profile and upload the first ICP PDF. Reef ICP detects the provider automatically.
-8. After confirming the first report, optionally choose **Add another ICP** to queue older analyses. Choose **Finish import** when the initial history is complete.
+7. Create the aquarium profile. No ICP PDF is required during this step.
+8. Open **Configure → Import ICP analyses** on that aquarium, upload the first ICP PDF and confirm the automatically detected provider.
+9. Optionally choose **Add another ICP** to queue additional analyses, then choose **Finish import** to store the batch.
 
 ## Roadmap
 
@@ -628,7 +636,8 @@ Version `0.11.0` completed the project-wide namespace rename. Existing test inst
 - [x] Current ATI laboratory PDF parser
 - [x] Automatic provider detection during import
 - [x] Provider confirmation and manual override with parser re-validation
-- [x] Batch import for several ICP reports during initial setup and later imports
+- [x] Aquarium profiles can be created before the first ICP report
+- [x] Batch import for several ICP reports through Configure
 - [x] Cross-provider normalized history
 - [x] Long-term statistics
 - [x] Previous-ICP comparison
@@ -642,6 +651,7 @@ Version `0.11.0` completed the project-wide namespace rename. Existing test inst
 - [x] Persistent aquarium stocking profile with dashboard display
 - [x] Optional personal Salinity/KH/Calcium/Magnesium target ranges with laboratory-target preservation
 - [x] Split unknown dashboard counts into not detectable / not determined / other unclear
+- [x] Hide card parameters that were never determined in any stored ICP while preserving historically measured parameters
 - [x] Latest-analysis status-change summary and repeated multi-report trends
 - [x] Compact action plan combining existing guidance without merging doses
 - [x] Per-section visibility controls in the graphical card editor
