@@ -3,13 +3,27 @@
     "step": {
       "user": {
         "title": "Reef ICP",
-        "description": "Create an aquarium profile with net water volume, stocking profile and dosing system, then upload the first ICP PDF. The stocking profile is stored and displayed only for now and does not yet change targets or dosing recommendations. Reef ICP detects the laboratory automatically and asks you to confirm it before import.",
+        "description": "Create an aquarium profile with net water volume, stocking profile and dosing system, then upload the first ICP PDF. After confirming it, you can add more existing ICP reports before the aquarium is created. Reef ICP detects the laboratory automatically and asks you to confirm it before import.",
         "data": {
           "aquarium_name": "Aquarium name",
           "aquarium_volume_l": "Net water volume",
           "stocking_profile": "Stocking profile",
           "supply_system": "Dosing / supply system",
           "pdf_file": "ICP PDF report"
+        }
+      },
+      "add_icp": {
+        "title": "Add another ICP analysis",
+        "description": "{report_count} ICP report(s) are already prepared for this aquarium.\n\n{report_list}\n\nUpload another ICP PDF to add it to the same import batch.",
+        "data": {
+          "pdf_file": "ICP PDF report"
+        }
+      },
+      "import_more": {
+        "title": "ICP reports prepared",
+        "description": "Prepared ICP reports: {report_count}\n\n{report_list}\n\nAdd another report or finish creating the aquarium. Reports are stored chronologically. A duplicate with the same provider and report ID replaces the earlier copy in this batch.",
+        "data": {
+          "batch_action": "Next step"
         }
       },
       "analysis_date": {
@@ -21,7 +35,7 @@
       },
       "confirm_provider": {
         "title": "Confirm ICP provider",
-        "description": "Automatically detected: {detected_provider}\n\nReport type: {report_type}\nAnalysis ID: {analysis_number}\nAnalysis date: {analysis_date}\n\nConfirm the provider or select another supported laboratory. Reef ICP validates the PDF with the selected provider parser before storing it.",
+        "description": "Automatically detected: {detected_provider}\n\nReport type: {report_type}\nAnalysis ID: {analysis_number}\nAnalysis date: {analysis_date}\n\nConfirm the provider or select another supported laboratory. Reef ICP validates the PDF with the selected provider parser before adding it to the import batch.",
         "data": {
           "provider": "ICP provider"
         }
@@ -41,7 +55,7 @@
       "init": {
         "title": "Reef ICP",
         "menu_options": {
-          "import_icp": "Import another ICP analysis",
+          "import_icp": "Import ICP analyses",
           "aquarium_settings": "Aquarium settings"
         }
       },
@@ -53,15 +67,22 @@
         }
       },
       "import_icp": {
-        "title": "Import another ICP analysis",
-        "description": "Upload another ICP PDF. Reef ICP detects the provider automatically and asks you to confirm it before import. Existing reports with the same provider and report ID are replaced.",
+        "title": "Import ICP analyses",
+        "description": "Upload an ICP PDF. Reef ICP detects the provider automatically and asks you to confirm it. After confirmation you can add more reports before the batch is stored. Existing stored reports with the same provider and report ID are replaced.\n\nReports currently prepared in this batch: {report_count}\n\n{report_list}",
         "data": {
           "pdf_file": "ICP PDF report"
         }
       },
+      "import_more": {
+        "title": "ICP reports prepared",
+        "description": "Prepared ICP reports: {report_count}\n\n{report_list}\n\nAdd another report or finish the batch import. Reports are merged into the aquarium history chronologically.",
+        "data": {
+          "batch_action": "Next step"
+        }
+      },
       "aquarium_settings": {
         "title": "Aquarium settings",
-        "description": "Set the aquarium's net water volume, stocking profile and permanent dosing/supply system. The stocking profile is currently stored as aquarium metadata only and does not yet change targets or calculations. These settings are independent of the laboratory that performs an ICP.",
+        "description": "Set the aquarium's net water volume, stocking profile and permanent dosing/supply system. These settings are independent of the laboratory that performs an ICP.",
         "data": {
           "aquarium_volume_l": "Net water volume",
           "stocking_profile": "Stocking profile",
@@ -70,7 +91,7 @@
       },
       "confirm_provider": {
         "title": "Confirm ICP provider",
-        "description": "Automatically detected: {detected_provider}\n\nReport type: {report_type}\nAnalysis ID: {analysis_number}\nAnalysis date: {analysis_date}\n\nConfirm the provider or select another supported laboratory. Reef ICP validates the PDF with the selected provider parser before storing it.",
+        "description": "Automatically detected: {detected_provider}\n\nReport type: {report_type}\nAnalysis ID: {analysis_number}\nAnalysis date: {analysis_date}\n\nConfirm the provider or select another supported laboratory. Reef ICP validates the PDF with the selected provider parser before adding it to the import batch.",
         "data": {
           "provider": "ICP provider"
         }

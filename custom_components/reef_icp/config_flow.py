@@ -70,6 +70,10 @@ from .statistics import async_request_statistics_rebuild
 CONF_ANALYSIS_DATE = "analysis_date"
 CONF_PDF_FILE = "pdf_file"
 CONF_PROVIDER = "provider"
+CONF_BATCH_ACTION = "batch_action"
+
+BATCH_ACTION_ADD = "add_another"
+BATCH_ACTION_FINISH = "finish"
 
 
 def _cleanup_pending_pdf(pending_pdf_path: str | None) -> None:
@@ -113,12 +117,9 @@ def _prepare_uploaded_pdf(
     try:
         report = parse_icp_pdf_for_provider(preserved_path, provider)
     except MissingAnalysisDateError:
-        # The provider is valid, but the report needs the separate date step
-        # after the user confirms or changes the detected provider.
         report = None
     except IcpParseError:
-        # Keep the file for the confirmation step. A false-positive detector
-        # can then be corrected manually and the selected parser validates it.
+        # Keep the file so the detected provider can be overridden manually.
         report = None
     except Exception:
         _cleanup_pending_pdf(str(preserved_path))
@@ -272,6 +273,34 @@ def _provider_selector() -> SelectSelector:
     )
 
 
+def _batch_action_selector(hass: HomeAssistant) -> SelectSelector:
+    """Return localized actions for continuing or finishing a batch import."""
+    is_german = str(hass.config.language or "").lower().startswith("de")
+    return SelectSelector(
+        SelectSelectorConfig(
+            options=[
+                SelectOptionDict(
+                    value=BATCH_ACTION_ADD,
+                    label=(
+                        "Weitere ICP hinzufügen"
+                        if is_german
+                        else "Add another ICP"
+                    ),
+                ),
+                SelectOptionDict(
+                    value=BATCH_ACTION_FINISH,
+                    label=(
+                        "Import abschließen"
+                        if is_german
+                        else "Finish import"
+                    ),
+                ),
+            ],
+            mode=SelectSelectorMode.DROPDOWN,
+        )
+    )
+
+
 _REPORT_TYPE_LABELS = {
     "classic_icp": "Classic ICP",
     "reef_icp_ms": "Reef ICP-MS",
@@ -390,6 +419,17 @@ def _upsert_report(
     return merged[-MAX_STORED_REPORTS:]
 
 
+def _merge_reports(
+    existing_reports: list[dict[str, Any]],
+    imported_reports: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Merge a complete import batch into stored reports."""
+    reports = list(existing_reports)
+    for report in imported_reports:
+        reports = _upsert_report(reports, report)
+    return reports
+
+
 def _updated_options_with_reports(
     entry: ConfigEntry,
     reports: list[dict[str, Any]],
@@ -398,6 +438,35 @@ def _updated_options_with_reports(
     options = dict(entry.options)
     options[CONF_REPORTS] = reports
     return options
+
+
+def _batch_placeholders(reports: list[dict[str, Any]]) -> dict[str, str]:
+    """Build the compact list shown before a batch import is completed."""
+    lines: list[str] = []
+    for report in sorted(reports, key=_report_sort_key):
+        metadata = report.get("metadata", {})
+        provider = report.get("provider_name") or PROVIDER_NAMES.get(
+            _report_provider(report),
+            _report_provider(report),
+        )
+        analysis_number = str(
+            metadata.get("provider_report_id")
+            or metadata.get("analysis_number")
+            or "—"
+        )
+        date_value = str(
+            metadata.get("analysis_date")
+            or metadata.get("sample_taken")
+            or "—"
+        )
+        if "T" in date_value:
+            date_value = date_value.split("T", 1)[0]
+        lines.append(f"✓ {date_value} · {provider} · {analysis_number}")
+
+    return {
+        "report_count": str(len(reports)),
+        "report_list": "\n".join(lines) or "—",
+    }
 
 
 class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -409,6 +478,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
     _pending_detected_provider: str | None = None
     _pending_provider: str | None = None
     _pending_report: dict[str, Any] | None = None
+    _pending_reports: list[dict[str, Any]] | None = None
     _pending_aquarium_name: str | None = None
     _pending_aquarium_volume_l: float | None = None
     _pending_stocking_profile: str | None = None
@@ -421,16 +491,48 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
         """Return the multi-provider import and aquarium-settings flow."""
         return ReefIcpOptionsFlow()
 
-    def _clear_pending_import(self) -> None:
-        """Clear all state belonging to the first-report import."""
+    def _batch_reports(self) -> list[dict[str, Any]]:
+        """Return this flow's pending report batch."""
+        if self._pending_reports is None:
+            self._pending_reports = []
+        return self._pending_reports
+
+    def _clear_current_pdf(self) -> None:
+        """Clear state for the PDF currently being confirmed."""
         self._pending_pdf_path = None
         self._pending_detected_provider = None
         self._pending_provider = None
         self._pending_report = None
+
+    def _clear_pending_setup(self) -> None:
+        """Clear all state belonging to the new-aquarium import batch."""
+        self._clear_current_pdf()
+        self._pending_reports = None
         self._pending_aquarium_name = None
         self._pending_aquarium_volume_l = None
         self._pending_stocking_profile = None
         self._pending_supply_system = None
+
+    async def _prepare_pdf_from_input(
+        self,
+        uploaded_file_id: str,
+    ) -> tuple[str, str, dict[str, Any] | None]:
+        """Prepare one PDF in the executor."""
+        return await self.hass.async_add_executor_job(
+            _prepare_uploaded_pdf,
+            self.hass,
+            uploaded_file_id,
+        )
+
+    async def _accept_report(self, report: dict[str, Any]) -> ConfigFlowResult:
+        """Add one confirmed report to the setup batch and continue."""
+        await self.hass.async_add_executor_job(
+            _cleanup_pending_pdf,
+            self._pending_pdf_path,
+        )
+        self._pending_reports = _upsert_report(self._batch_reports(), report)
+        self._clear_current_pdf()
+        return await self.async_step_import_more()
 
     @override
     async def async_step_user(
@@ -458,11 +560,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
             else:
                 try:
                     pending_path, provider, preview_report = (
-                        await self.hass.async_add_executor_job(
-                            _prepare_uploaded_pdf,
-                            self.hass,
-                            user_input[CONF_PDF_FILE],
-                        )
+                        await self._prepare_pdf_from_input(user_input[CONF_PDF_FILE])
                     )
                 except UnsupportedIcpProviderError:
                     errors["base"] = "unsupported_provider"
@@ -471,6 +569,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                 except Exception:  # noqa: BLE001
                     errors["base"] = "unknown"
                 else:
+                    self._pending_reports = []
                     self._pending_pdf_path = pending_path
                     self._pending_detected_provider = provider
                     self._pending_provider = provider
@@ -505,10 +604,50 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    async def async_step_add_icp(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Add another PDF to a new aquarium's pending import batch."""
+        if self._pending_aquarium_name is None or not self._batch_reports():
+            return await self.async_step_user()
+
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                pending_path, provider, preview_report = (
+                    await self._prepare_pdf_from_input(user_input[CONF_PDF_FILE])
+                )
+            except UnsupportedIcpProviderError:
+                errors["base"] = "unsupported_provider"
+            except IcpParseError:
+                errors["base"] = "invalid_icp_pdf"
+            except Exception:  # noqa: BLE001
+                errors["base"] = "unknown"
+            else:
+                self._pending_pdf_path = pending_path
+                self._pending_detected_provider = provider
+                self._pending_provider = provider
+                self._pending_report = preview_report
+                return await self.async_step_confirm_provider()
+
+        schema = probatio.Schema(
+            {
+                probatio.Required(CONF_PDF_FILE): FileSelector(
+                    FileSelectorConfig(accept=".pdf,application/pdf")
+                ),
+            }
+        )
+        return self.async_show_form(
+            step_id="add_icp",
+            data_schema=self.add_suggested_values_to_schema(schema, user_input),
+            description_placeholders=_batch_placeholders(self._batch_reports()),
+            errors=errors,
+        )
+
     async def async_step_confirm_provider(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Confirm or override the automatically detected first-report provider."""
+        """Confirm or override the automatically detected report provider."""
         errors: dict[str, str] = {}
 
         if (
@@ -519,6 +658,8 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
             or self._pending_stocking_profile is None
             or self._pending_supply_system is None
         ):
+            if self._batch_reports():
+                return await self.async_step_add_icp()
             return await self.async_step_user()
 
         detected_provider = self._pending_detected_provider
@@ -547,26 +688,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
             except Exception:  # noqa: BLE001
                 errors["base"] = "unknown"
             else:
-                await self.hass.async_add_executor_job(
-                    _cleanup_pending_pdf,
-                    self._pending_pdf_path,
-                )
-                aquarium_name = self._pending_aquarium_name
-                aquarium_volume_l = self._pending_aquarium_volume_l
-                stocking_profile = self._pending_stocking_profile
-                supply_system = self._pending_supply_system
-                self._clear_pending_import()
-
-                return self.async_create_entry(
-                    title=aquarium_name,
-                    data={CONF_AQUARIUM_NAME: aquarium_name},
-                    options={
-                        CONF_REPORTS: [report],
-                        CONF_AQUARIUM_VOLUME_L: aquarium_volume_l,
-                        CONF_STOCKING_PROFILE: stocking_profile,
-                        CONF_SUPPLY_SYSTEM: supply_system,
-                    },
-                )
+                return await self._accept_report(report)
 
         schema = probatio.Schema(
             {
@@ -598,6 +720,8 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
             or self._pending_stocking_profile is None
             or self._pending_supply_system is None
         ):
+            if self._batch_reports():
+                return await self.async_step_add_icp()
             return await self.async_step_user()
 
         if user_input is not None:
@@ -615,26 +739,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
             except Exception:  # noqa: BLE001
                 errors["base"] = "unknown"
             else:
-                await self.hass.async_add_executor_job(
-                    _cleanup_pending_pdf,
-                    self._pending_pdf_path,
-                )
-                aquarium_name = self._pending_aquarium_name
-                aquarium_volume_l = self._pending_aquarium_volume_l
-                stocking_profile = self._pending_stocking_profile
-                supply_system = self._pending_supply_system
-                self._clear_pending_import()
-
-                return self.async_create_entry(
-                    title=aquarium_name,
-                    data={CONF_AQUARIUM_NAME: aquarium_name},
-                    options={
-                        CONF_REPORTS: [report],
-                        CONF_AQUARIUM_VOLUME_L: aquarium_volume_l,
-                        CONF_STOCKING_PROFILE: stocking_profile,
-                        CONF_SUPPLY_SYSTEM: supply_system,
-                    },
-                )
+                return await self._accept_report(report)
 
         schema = probatio.Schema(
             {
@@ -654,6 +759,56 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    async def async_step_import_more(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Review a new aquarium's pending reports and continue or finish."""
+        reports = self._batch_reports()
+        if (
+            not reports
+            or self._pending_aquarium_name is None
+            or self._pending_aquarium_volume_l is None
+            or self._pending_stocking_profile is None
+            or self._pending_supply_system is None
+        ):
+            return await self.async_step_user()
+
+        if user_input is not None:
+            action = str(user_input[CONF_BATCH_ACTION])
+            if action == BATCH_ACTION_ADD:
+                return await self.async_step_add_icp()
+            if action == BATCH_ACTION_FINISH:
+                aquarium_name = self._pending_aquarium_name
+                aquarium_volume_l = self._pending_aquarium_volume_l
+                stocking_profile = self._pending_stocking_profile
+                supply_system = self._pending_supply_system
+                stored_reports = list(reports)
+                self._clear_pending_setup()
+                return self.async_create_entry(
+                    title=aquarium_name,
+                    data={CONF_AQUARIUM_NAME: aquarium_name},
+                    options={
+                        CONF_REPORTS: stored_reports,
+                        CONF_AQUARIUM_VOLUME_L: aquarium_volume_l,
+                        CONF_STOCKING_PROFILE: stocking_profile,
+                        CONF_SUPPLY_SYSTEM: supply_system,
+                    },
+                )
+
+        schema = probatio.Schema(
+            {
+                probatio.Required(CONF_BATCH_ACTION): _batch_action_selector(
+                    self.hass
+                ),
+            }
+        )
+        suggested = user_input or {CONF_BATCH_ACTION: BATCH_ACTION_ADD}
+        return self.async_show_form(
+            step_id="import_more",
+            data_schema=self.add_suggested_values_to_schema(schema, suggested),
+            description_placeholders=_batch_placeholders(reports),
+        )
+
 
 class ReefIcpOptionsFlow(OptionsFlowWithReload):
     """Manage aquarium settings and import additional ICP reports."""
@@ -662,36 +817,56 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
     _pending_detected_provider: str | None = None
     _pending_provider: str | None = None
     _pending_report: dict[str, Any] | None = None
+    _pending_reports: list[dict[str, Any]] | None = None
 
-    def _clear_pending_import(self) -> None:
-        """Clear state belonging to an additional-report import."""
+    def _batch_reports(self) -> list[dict[str, Any]]:
+        """Return this options flow's pending report batch."""
+        if self._pending_reports is None:
+            self._pending_reports = []
+        return self._pending_reports
+
+    def _clear_current_pdf(self) -> None:
+        """Clear state for the PDF currently being confirmed."""
         self._pending_pdf_path = None
         self._pending_detected_provider = None
         self._pending_provider = None
         self._pending_report = None
 
-    def _store_report(self, report: dict[str, Any]) -> ConfigFlowResult:
-        """Store or replace one report while preserving aquarium settings."""
-        existing_reports = list(
-            self.config_entry.options.get(CONF_REPORTS, [])
+    def _clear_batch(self) -> None:
+        """Clear all pending import state."""
+        self._clear_current_pdf()
+        self._pending_reports = None
+
+    async def _accept_report(self, report: dict[str, Any]) -> ConfigFlowResult:
+        """Add one confirmed report to the current options import batch."""
+        await self.hass.async_add_executor_job(
+            _cleanup_pending_pdf,
+            self._pending_pdf_path,
         )
+        self._pending_reports = _upsert_report(self._batch_reports(), report)
+        self._clear_current_pdf()
+        return await self.async_step_import_more()
+
+    def _store_reports(self, imported_reports: list[dict[str, Any]]) -> ConfigFlowResult:
+        """Store a completed report batch while preserving aquarium settings."""
+        existing_reports = list(self.config_entry.options.get(CONF_REPORTS, []))
+        existing_identities = {
+            _report_identity(report) for report in existing_reports
+        }
         replacing_existing = any(
-            _report_identity(existing) == _report_identity(report)
-            for existing in existing_reports
+            _report_identity(report) in existing_identities
+            for report in imported_reports
         )
-        reports = _upsert_report(existing_reports, report)
+        reports = _merge_reports(existing_reports, imported_reports)
         if replacing_existing:
             async_request_statistics_rebuild(
                 self.hass,
                 self.config_entry,
-                [*existing_reports, report],
+                [*existing_reports, *imported_reports],
             )
         return self.async_create_entry(
             title="",
-            data=_updated_options_with_reports(
-                self.config_entry,
-                reports,
-            ),
+            data=_updated_options_with_reports(self.config_entry, reports),
         )
 
     @override
@@ -707,7 +882,7 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
     async def async_step_import_icp(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Upload another ICP PDF and prepare provider confirmation."""
+        """Upload one ICP PDF for the current batch."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -726,6 +901,8 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
             except Exception:  # noqa: BLE001
                 errors["base"] = "unknown"
             else:
+                if self._pending_reports is None:
+                    self._pending_reports = []
                 self._pending_pdf_path = pending_path
                 self._pending_detected_provider = provider
                 self._pending_provider = provider
@@ -743,13 +920,14 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
         return self.async_show_form(
             step_id="import_icp",
             data_schema=self.add_suggested_values_to_schema(schema, user_input),
+            description_placeholders=_batch_placeholders(self._batch_reports()),
             errors=errors,
         )
 
     async def async_step_confirm_provider(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Confirm or override the detected provider before storing a report."""
+        """Confirm or override the detected provider before staging a report."""
         errors: dict[str, str] = {}
 
         if (
@@ -784,12 +962,7 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
             except Exception:  # noqa: BLE001
                 errors["base"] = "unknown"
             else:
-                await self.hass.async_add_executor_job(
-                    _cleanup_pending_pdf,
-                    self._pending_pdf_path,
-                )
-                self._clear_pending_import()
-                return self._store_report(report)
+                return await self._accept_report(report)
 
         schema = probatio.Schema(
             {
@@ -807,10 +980,41 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
             errors=errors,
         )
 
+    async def async_step_import_more(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Review the current options import batch and continue or finish."""
+        reports = self._batch_reports()
+        if not reports:
+            return await self.async_step_import_icp()
+
+        if user_input is not None:
+            action = str(user_input[CONF_BATCH_ACTION])
+            if action == BATCH_ACTION_ADD:
+                return await self.async_step_import_icp()
+            if action == BATCH_ACTION_FINISH:
+                imported_reports = list(reports)
+                self._clear_batch()
+                return self._store_reports(imported_reports)
+
+        schema = probatio.Schema(
+            {
+                probatio.Required(CONF_BATCH_ACTION): _batch_action_selector(
+                    self.hass
+                ),
+            }
+        )
+        suggested = user_input or {CONF_BATCH_ACTION: BATCH_ACTION_ADD}
+        return self.async_show_form(
+            step_id="import_more",
+            data_schema=self.add_suggested_values_to_schema(schema, suggested),
+            description_placeholders=_batch_placeholders(reports),
+        )
+
     async def async_step_aquarium_settings(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Edit net aquarium volume and the persistent supply system."""
+        """Edit net aquarium volume, stocking profile and supply system."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -890,12 +1094,7 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
             except Exception:  # noqa: BLE001
                 errors["base"] = "unknown"
             else:
-                await self.hass.async_add_executor_job(
-                    _cleanup_pending_pdf,
-                    self._pending_pdf_path,
-                )
-                self._clear_pending_import()
-                return self._store_report(report)
+                return await self._accept_report(report)
 
         schema = probatio.Schema(
             {
