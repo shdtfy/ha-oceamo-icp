@@ -11,6 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
@@ -1383,6 +1384,8 @@ class ReefMeasurementSensor(ReefBaseSensor):
         self._attr_name = measurement.get("name", key)
         self._attr_native_unit_of_measurement = measurement.get("unit")
         self._attr_icon = "mdi:flask"
+        if category == "osmosis":
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
     @override
