@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.13.3 - Development
+
+### Added
+
+- Added automatic detection and parsing for **Tropic Marin ICP Water Analysis** reports.
+- Added support for both `icp_water_analysis` and `icp_water_analysis_plus` report types.
+- Added Tropic Marin metadata including sample ID, aquarium name, aquarium volume, sample date, receipt date and provider report ID from the analysis URL.
+- Added provider-independent normalization for comparable major elements, trace elements, pollutants and nutrients.
+- Added Tropic Marin basic physical/chemical values such as salinity, alkalinity, pH, conductivity, density and acid-binding capacity when present.
+- Added preservation of `n.n.` (not detectable), `n.g.` (not measured), bounded values and provider product hints without converting non-numeric results to zero.
+- Added normalized status handling from Tropic Marin's own `Ideal`, `increase` and `lower` recommendations.
+- Added parsing of Tropic Marin relative-value tables as report metadata.
+- Added **osmosis / RO water** measurements for ICP Water Analysis Plus reports when present.
+
+### Report type detection
+
+- Reef ICP distinguishes **ICP Water Analysis Plus** only from an explicit report/product-title marker.
+- Page count, conductivity and the mere presence of RO-water values are deliberately not used to infer the Plus product.
+- If the stylized title cannot be extracted from a future PDF variant, Reef ICP keeps the neutral base report type instead of guessing.
+
+### Development references
+
+- Developed against the public Tropic Marin report family represented by analyses `11140`, `11498`, `11827` and `14278`.
+- `11140` represents the **ICP Water Analysis Plus** layout with an osmosis-water section; the other three represent the standard **ICP Water Analysis** layout.
+
+### Internal
+
+- Split the established parser implementation into `parser_core.py` plus the public `parser.py` dispatch wrapper so the existing Oceamo, Fauna Marin, ATI and TRITON parser code remains unchanged while Tropic Marin is added as an isolated provider module.
+- Bumped the Home Assistant integration version to `0.13.3`.
+- The bundled dashboard card is unchanged in this development step.
+
 ## 0.13.2 - Development
 
 ### Added

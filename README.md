@@ -144,11 +144,28 @@ The ATI parser has been developed against a real public current-format ATI repor
 
 The currently supported TRITON family is explicitly treated as `triton_legacy_icp`. It has been tested against two real two-page German TRITON ICP-OES reports from 2014 and 2015. Current TRITON reports may use a different layout and remain a separate compatibility target until a representative modern result is available.
 
+### Tropic Marin
+
+- Automatic recognition of the current **Tropic Marin ICP Water Analysis** PDF family
+- Standard **ICP Water Analysis** (`icp_water_analysis`) and **ICP Water Analysis Plus** (`icp_water_analysis_plus`) report types
+- Sample ID, aquarium name, aquarium volume, sample date and laboratory receipt date
+- Stable provider report ID from the Tropic Marin analysis URL when present
+- Basic physical and chemical values such as conductivity, density, salinity, pH and alkalinity when supplied by the report
+- Major elements / halogens, nutrients, trace elements and potential pollutants
+- Tropic Marin `Ideal`, `increase` and `lower` recommendations normalized to Reef ICP status levels while preserving the original laboratory assessment
+- Product hints from the Block Analysis System and Components recommendations are preserved as laboratory-provided text
+- `n.n.` and `n.g.` remain non-numeric and are never converted to zero
+- Comparable values such as iodine, ICP phosphorus and silicon are normalized to the shared Reef ICP units for cross-provider history
+- Relative-value tables are preserved as report metadata instead of being mixed into the normal analyte history
+- **ICP Water Analysis Plus** can additionally import its RO / osmosis-water measurements into the existing `osmosis` category
+
+The parser was developed against four public Tropic Marin report examples: analyses **11140**, **11498**, **11827** and **14278**. Report **11140** represents the Plus layout; the other three represent the standard layout. Reef ICP only labels a report as Plus when an explicit product-title marker can be extracted. It deliberately does not infer Plus from page count, conductivity or the presence of an osmosis-water section.
+
 ## Provider and report type
 
 Reef ICP stores the laboratory provider separately from a report-type hint. This prepares the integration for different analysis products from the same laboratory, for example classic Oceamo ICP versus **Oceamo Reef ICP-MS**, without treating them as different providers.
 
-Current report-type hints include `classic_icp`, `reef_icp_ms`, `reef_icp`, `ati_icp` and `triton_legacy_icp`. Future parsers can add further types such as ATI Ultimate-MS while keeping the same provider-neutral history model.
+Current report-type hints include `classic_icp`, `reef_icp_ms`, `reef_icp`, `ati_icp`, `triton_legacy_icp`, `icp_water_analysis` and `icp_water_analysis_plus`. Future parsers can add further types such as ATI Ultimate-MS while keeping the same provider-neutral history model.
 
 ## Aquarium profile
 
@@ -166,7 +183,7 @@ The stocking profile is intentionally metadata-only in version `0.11.7`: Reef IC
 
 Built-in presets currently include **Fauna Marin Balling Light**, **ATI Essentials pro**, **TRITON Method** and **Oceamo DUO**. The selector also accepts a custom system name, and an aquarium can be set to analysis-only mode.
 
-These settings remain attached to the aquarium when additional reports from Oceamo, Fauna Marin, ATI, TRITON or future providers are imported. Existing aquariums can edit the profile through **Configure → Aquarium settings**.
+These settings remain attached to the aquarium when additional reports from Oceamo, Fauna Marin, ATI, TRITON, Tropic Marin or future providers are imported. Existing aquariums can edit the profile through **Configure → Aquarium settings**.
 
 This is the foundation for a provider-independent recommendation engine: laboratory measurements stay normalized by Reef ICP, while dosing recommendations can be generated for the aquarium's chosen supply system and net water volume rather than blindly copying the laboratory's product recommendations.
 
@@ -397,6 +414,7 @@ Currently detected automatically:
 - Fauna Marin
 - ATI
 - TRITON (tested legacy ICP-OES format)
+- Tropic Marin (ICP Water Analysis / ICP Water Analysis Plus)
 
 If no supported provider can be identified, the current PDF import stops instead of guessing. Already confirmed reports in the same batch remain queued. Date handling is provider-independent: Reef ICP first uses a date parsed from the report, then a parsed sample date or a plausible filename date. PDF `CreationDate` metadata is not treated as an analysis date. If no trustworthy date remains, Reef ICP opens a native Home Assistant date selector.
 
@@ -607,13 +625,14 @@ Version `0.11.0` completed the project-wide namespace rename. Existing test inst
 - [ ] Older ATI layouts and ATI Pro / Ultimate-MS variants
 - [x] Oceamo Reef ICP-MS / current ICP-MS report layout
 - [x] TRITON legacy ICP-OES (tested 2014 + 2015 layouts)
+- [x] Tropic Marin ICP Water Analysis / ICP Water Analysis Plus
 - [x] Provider-independent analysis-date fallback with manual Home Assistant date selector
 - [ ] Current TRITON ICP-OES report layout
 - [ ] Reef Factory Smart ICP-OES
 - [ ] Additional newer Oceamo report variants if the PDF layout changes
 - [ ] Additional ICP laboratories
 - [ ] Parser regression tests in the repository
-- [ ] First tagged HACS release
+- [x] First tagged HACS release
 - [ ] Optional dosing assistant with explicit safeguards and user approval
 
 ## Privacy
@@ -624,7 +643,7 @@ Private test reports are not included in the public repository.
 
 ## Disclaimer
 
-Reef ICP is an independent community project and is not affiliated with or endorsed by Oceamo, Fauna Marin, ATI, TRITON or any other ICP laboratory.
+Reef ICP is an independent community project and is not affiliated with or endorsed by Oceamo, Fauna Marin, ATI, TRITON, Tropic Marin or any other ICP laboratory.
 
 Laboratory reference ranges and recommendations are imported from the supplied reports. Reef ICP does not replace professional aquarium husbandry advice.
 
