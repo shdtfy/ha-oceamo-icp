@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.13.4 - Development
+
+### Fixed
+
+- Fixed the missing **Total phosphate (Osmosis)** measurement in Tropic Marin ICP Water Analysis Plus reports when the PDF text extractor leaves fragments of the `PO4` formula in front of the two osmosis table values.
+- Osmosis / RO-water measurement entities are now clearly named with an **`(Osmose)`** suffix, for example `Calcium (Osmose)` and `Aluminium (Osmose)`, so aquarium and source-water values are no longer visually indistinguishable in Home Assistant.
+- Internal measurement keys, categories and long-term-statistics identities remain unchanged, so the naming fix does not create a second history series for existing osmosis measurements.
+
+### Versioning
+
+- Bumped the Home Assistant integration version to `0.13.4`.
+- The bundled dashboard card remains unchanged.
+
 ## 0.13.3 - Development
 
 ### Added

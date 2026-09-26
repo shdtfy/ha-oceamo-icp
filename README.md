@@ -158,6 +158,7 @@ The currently supported TRITON family is explicitly treated as `triton_legacy_ic
 - Comparable values such as iodine, ICP phosphorus and silicon are normalized to the shared Reef ICP units for cross-provider history
 - Relative-value tables are preserved as report metadata instead of being mixed into the normal analyte history
 - **ICP Water Analysis Plus** can additionally import its RO / osmosis-water measurements into the existing `osmosis` category
+- Osmosis-water entities use an `(Osmose)` suffix in Home Assistant so they are clearly distinguishable from the aquarium measurements
 
 The parser was developed against four public Tropic Marin report examples: analyses **11140**, **11498**, **11827** and **14278**. Report **11140** represents the Plus layout; the other three represent the standard layout. Reef ICP only labels a report as Plus when an explicit product-title marker can be extracted. It deliberately does not infer Plus from page count, conductivity or the presence of an osmosis-water section.
 
