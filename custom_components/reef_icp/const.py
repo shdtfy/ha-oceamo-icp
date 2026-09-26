@@ -5,6 +5,7 @@ DOMAIN = "reef_icp"
 CONF_AQUARIUM_NAME = "aquarium_name"
 CONF_AQUARIUM_VOLUME_L = "aquarium_volume_l"
 CONF_SUPPLY_SYSTEM = "supply_system"
+CONF_REEF_METHOD = "reef_method"
 CONF_STOCKING_PROFILE = "stocking_profile"
 CONF_CUSTOM_TARGETS = "custom_targets"
 CONF_REPORTS = "reports"
@@ -15,6 +16,14 @@ SUPPLY_SYSTEM_ATI_ESSENTIALS_PRO = "ati_essentials_pro"
 SUPPLY_SYSTEM_TRITON_METHOD = "triton_method"
 SUPPLY_SYSTEM_OCEAMO_DUO = "oceamo_duo"
 SUPPLY_SYSTEM_TROPIC_MARIN_ORIGINAL_BALLING = "tropic_marin_original_balling"
+SUPPLY_SYSTEM_TROPIC_MARIN_ALL_FOR_REEF = "tropic_marin_all_for_reef"
+SUPPLY_SYSTEM_AQUAFOREST_COMPONENT_123 = "aquaforest_component_123"
+SUPPLY_SYSTEM_RED_SEA_REEF_CARE_4_PART = "red_sea_reef_care_4_part"
+SUPPLY_SYSTEM_RED_SEA_REEF_CARE_7_PART = "red_sea_reef_care_7_part"
+SUPPLY_SYSTEM_SANGOKAI_BALANCE = "sangokai_balance"
+SUPPLY_SYSTEM_KORALLEN_ZUCHT_CORAL_SYSTEM = "korallen_zucht_coral_system"
+SUPPLY_SYSTEM_REEF_ZLEMENTS = "reef_zlements"
+SUPPLY_SYSTEM_REEF_MOONSHINERS = "reef_moonshiners"
 
 SUPPLY_SYSTEM_NAMES = {
     SUPPLY_SYSTEM_NONE: "None / analysis only",
@@ -23,6 +32,34 @@ SUPPLY_SYSTEM_NAMES = {
     SUPPLY_SYSTEM_TRITON_METHOD: "TRITON Method",
     SUPPLY_SYSTEM_OCEAMO_DUO: "Oceamo DUO",
     SUPPLY_SYSTEM_TROPIC_MARIN_ORIGINAL_BALLING: "Tropic Marin Original Balling",
+    SUPPLY_SYSTEM_TROPIC_MARIN_ALL_FOR_REEF: "Tropic Marin All-For-Reef",
+    SUPPLY_SYSTEM_AQUAFOREST_COMPONENT_123: "Aquaforest Component 1+2+3+",
+    SUPPLY_SYSTEM_RED_SEA_REEF_CARE_4_PART: "Red Sea Reef Care 4-Part",
+    SUPPLY_SYSTEM_RED_SEA_REEF_CARE_7_PART: "Red Sea Reef Care 7-Part",
+    SUPPLY_SYSTEM_SANGOKAI_BALANCE: "SANGOKAI BALANCE + INDIVIDUAL",
+    SUPPLY_SYSTEM_KORALLEN_ZUCHT_CORAL_SYSTEM: "Korallen-Zucht Coral System 1-4",
+    SUPPLY_SYSTEM_REEF_ZLEMENTS: "Reef Zlements",
+    SUPPLY_SYSTEM_REEF_MOONSHINERS: "Reef Moonshiner's",
+}
+
+REEF_METHOD_NONE = "none"
+REEF_METHOD_KORALLEN_ZUCHT_ZEOVIT = "korallen_zucht_zeovit"
+REEF_METHOD_FAUNA_MARIN_ZEO_LIGHT = "fauna_marin_zeo_light"
+REEF_METHOD_AQUAFOREST_ZEO_MIX = "aquaforest_zeo_mix"
+REEF_METHOD_AQUAFOREST_PROBIOTIC = "aquaforest_probiotic"
+REEF_METHOD_BRIGHTWELL_NEOZEO = "brightwell_neozeo"
+REEF_METHOD_SANGOKAI_BASIS = "sangokai_basis"
+REEF_METHOD_RED_SEA_NOPOX = "red_sea_nopox"
+
+REEF_METHOD_NAMES = {
+    REEF_METHOD_NONE: "None / standard reef",
+    REEF_METHOD_KORALLEN_ZUCHT_ZEOVIT: "Korallen-Zucht ZEOvit",
+    REEF_METHOD_FAUNA_MARIN_ZEO_LIGHT: "Fauna Marin ZEO LIGHT",
+    REEF_METHOD_AQUAFOREST_ZEO_MIX: "Aquaforest Zeo Mix",
+    REEF_METHOD_AQUAFOREST_PROBIOTIC: "Aquaforest Probiotic Method",
+    REEF_METHOD_BRIGHTWELL_NEOZEO: "Brightwell NeoZeo",
+    REEF_METHOD_SANGOKAI_BASIS: "SANGOKAI BASIS",
+    REEF_METHOD_RED_SEA_NOPOX: "Red Sea NO3:PO4-X",
 }
 
 STOCKING_PROFILE_MIXED_REEF = "mixed_reef"
