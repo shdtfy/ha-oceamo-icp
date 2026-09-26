@@ -1,5 +1,86 @@
 # Changelog
 
+## 0.15.0 - Development
+
+### Added
+
+- Added a separate **reef / nutrient method** setting independent of the mineral dosing / supply system.
+- Added support for the following additional supply systems:
+  - Tropic Marin All-For-Reef
+  - Aquaforest Component 1+2+3+
+  - Red Sea Reef Care 4-Part
+  - Red Sea Reef Care 7-Part
+  - SANGOKAI BALANCE + INDIVIDUAL
+  - Korallen-Zucht Coral System 1-4
+  - Reef Zlements
+  - Reef Moonshiner's
+- Added reef / nutrient method support for:
+  - Korallen-Zucht ZEOvit
+  - Fauna Marin ZEO LIGHT
+  - Aquaforest Zeo Mix
+  - Aquaforest Probiotic Method
+  - Brightwell NeoZeo
+  - SANGOKAI BASIS
+  - Red Sea NO3:PO4-X
+- Added volume-scaled manufacturer guidance for supported reef methods.
+- Added ZEOvit guidance for zeolite quantity, long-term reactor flow, media replacement interval and reactor maintenance.
+- Added Fauna Marin ZEO LIGHT guidance for zeolite, Reef Vitality, Carb L, Color Elements, Coral Sprint and Min S.
+- Added staged Brightwell NeoZeo setup guidance and maintenance handling.
+- Added SANGOKAI BASIS establishment guidance and phosphate-dependent maintenance dosing.
+- Added stocking-profile-based Red Sea NO3:PO4-X guidance.
+- Added numeric SANGOKAI correction support for Calcium, Alkalinity, Potassium, Strontium, Boron, Bromide and Iodine where published manufacturer strengths are available.
+- Added ongoing maintenance guidance for balanced systems such as Tropic Marin All-For-Reef and Aquaforest Component 1+2+3+.
+- Added a dedicated reef-method section to the Reef ICP dashboard card.
+- Added the selected reef method to the aquarium profile displayed in the dashboard.
+
+### Changed
+
+- Mineral supply systems and reef / nutrient methods are now stored independently.
+- This allows combinations such as:
+  - Fauna Marin Balling Light + Fauna Marin ZEO LIGHT
+  - SANGOKAI BALANCE + SANGOKAI BASIS
+  - other independent supply / nutrient-method combinations
+- Existing aquariums without a stored reef method automatically use **None / standard reef**.
+- The aquarium settings flow now allows changing the reef / nutrient method independently of the supply system.
+- The supply-system selector now includes all newly supported systems.
+- The support matrix now documents ICP providers, mineral supply systems and reef / nutrient methods separately.
+
+### Safety
+
+- RO / osmosis measurements remain excluded from all aquarium dosing and reef-method calculations.
+- Reef-method calculations only use aquarium-water measurements.
+- Balanced multi-component dosing systems are not intentionally unbalanced when the manufacturer specifies equal dosing.
+- Manufacturer-specific proprietary calculators are used instead of reverse-engineering unpublished concentrations.
+- Reef ICP does not invent per-element concentrations for mixed trace-element products.
+- ZEOvit long-term operating guidance is kept separate from startup or conversion procedures where manufacturer instructions differ.
+- Red Sea Reef Care remains manufacturer-guided where product-generation-specific concentrations cannot be applied unambiguously.
+
+### Testing
+
+- Added regression tests for the new supply-system calculations.
+- Added regression tests for all newly supported reef / nutrient methods.
+- Added tests for SANGOKAI correction calculations.
+- Added tests ensuring osmosis values cannot influence reef-method calculations.
+- Added UI contract tests for:
+  - reef-method configuration
+  - translations
+  - sensor guidance attributes
+  - dashboard card extension registration
+- Expanded the automated test suite to **45 passing tests**.
+
+### Frontend
+
+- Added a separate dashboard chip for the selected reef / nutrient method.
+- Added an expandable reef-method guidance panel.
+- Added display support for media quantities, reactor flow, replacement intervals, maintenance schedules and staged setup instructions.
+- Added maintenance-dose display for supported balanced supply systems.
+- Dashboard resources are now served with cache version **0.15.0**.
+
+### Versioning
+
+- Bumped the Home Assistant integration version to **0.15.0**.
+- Added the Reef ICP 0.15 dashboard extension.
+
 ## 0.14.0 - Development
 
 ### Added
