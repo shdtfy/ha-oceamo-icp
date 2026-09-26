@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.13.7 - Development
+
+### Added
+
+- Added **Tropic Marin Original Balling** as a selectable supply system.
+- Added numeric correction calculations for **Calcium / Part A** and **Alkalinity (KH) / Part B** using Tropic Marin's published Original Balling solution strengths.
+- Original Balling corrections respect the manufacturer's published maximum dose and link directly to the official Tropic Marin product information.
+- The supply-system panel exposes the official manufacturer source even when no correction is currently required.
+- Added a maintenance note explaining the role of **Part C** for ionic balance and the manufacturer's guidance that A/B/C are dosed separately, with individually different amounts permitted for targeted imbalances.
+
+### Fixed
+
+- Tropic Marin `Coloring: none` is displayed as **No coloration** / **Keine Färbung** instead of the raw `none` value.
+- Osmosis / RO-water measurements now receive the visible **`(Osmose)`** suffix provider-independently, including Oceamo reports.
+- Existing stored osmosis measurements are migrated on integration reload without changing their keys, categories or long-term-statistics identities.
+
+### Internal
+
+- Kept the established provider parser core unchanged; the public parser wrapper now normalizes osmosis display names after provider parsing.
+- Tropic Marin Original Balling support is layered through the public recommendation wrapper, leaving the established manufacturer rule core untouched.
+- Bumped the integration and bundled-card cache version to `0.13.7`.
+
 ## 0.13.6 - Development
 
 ### Added

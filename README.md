@@ -183,7 +183,7 @@ Stocking-profile presets currently include **Mixed Reef**, **SPS-dominant**, **L
 
 The stocking profile is intentionally metadata-only in version `0.11.7`: Reef ICP stores it, exposes it on the `ICP Status` sensor and shows it in the dashboard card, but it does **not** yet alter laboratory status, target ranges or dosing calculations.
 
-Built-in presets currently include **Fauna Marin Balling Light**, **ATI Essentials pro**, **TRITON Method** and **Oceamo DUO**. An aquarium can also use **Other / custom** with a separate custom system name, or be set to analysis-only mode.
+Built-in presets currently include **Fauna Marin Balling Light**, **ATI Essentials pro**, **TRITON Method**, **Oceamo DUO** and **Tropic Marin Original Balling**. An aquarium can also use **Other / custom** with a separate custom system name, or be set to analysis-only mode.
 
 Starting with version `0.13.6`, the aquarium profile is created independently of laboratory data. A new aquarium therefore does **not** require an ICP report. The first analysis can be imported immediately or at any later time through **Configure → Import ICP analyses**.
 
@@ -370,6 +370,7 @@ Starting with version `0.10.0`, the recommendation engine supports:
 - **ATI Essentials pro** with **ATI ICP Elements** for provider-independent correction of major, minor and trace-element deficiencies.
 - **Oceamo DUO** with numeric DUO-KH correction plus **Oceamo Single Elements** for supported individual deficiencies.
 - **TRITON Method / Core7 Flex** as an official-calculator workflow. Reef ICP identifies the deficient TRITON single element and links to TRITON's own calculator instead of copying an unpublished product concentration.
+- **Tropic Marin Original Balling** with manufacturer-based numeric corrections for **Calcium / Part A** and **Alkalinity (KH) / Part B**. The implementation uses the published prepared-solution reference of 50 ml per 100 l for +10 mg/l calcium or +1.4 dKH, respects the published maximum dose, and keeps Part C as the ionic-balance component rather than treating it as an independent magnesium correction.
 
 Examples of automatically calculated single-element corrections include iodine, fluoride, molybdenum, manganese, lithium, potassium, boron, strontium and additional supported analytes depending on the selected supply system.
 
@@ -382,7 +383,7 @@ The calculation uses:
 
 When the manufacturer publishes a maximum daily increase, Reef ICP also calculates a minimum number of dosing days and an approximate amount per day. If no official daily limit is available in the implemented source data, the card deliberately shows only the total correction and warns against interpreting it as an automatic one-time dose.
 
-Calculated amounts are **correction doses**, not permanent daily maintenance doses. Balling Light, ATI Essentials pro, Oceamo DUO and TRITON Core7 remain consumption-driven systems for ongoing daily dosing.
+Calculated amounts are **correction doses**, not permanent daily maintenance doses. Balling Light, ATI Essentials pro, Oceamo DUO, TRITON Core7 and Tropic Marin Original Balling remain consumption-driven systems for ongoing daily dosing.
 
 Manufacturer formulations can change. Reef ICP therefore surfaces the manufacturer source used for each recommendation and users should confirm the current product label before dosing.
 
