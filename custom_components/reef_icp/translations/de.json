@@ -3,13 +3,12 @@
     "step": {
       "user": {
         "title": "Reef ICP",
-        "description": "Lege ein Aquarium mit Netto-Wasservolumen, Besatzprofil, Versorgungssystem und Sollwert-Modus an und lade den ersten ICP-PDF-Bericht hoch. Du kannst die Sollbereiche des jeweiligen Labors verwenden oder eigene Zielbereiche für Salinität, KH, Calcium und Magnesium hinterlegen. Nach der Bestätigung kannst du weitere vorhandene ICP-Berichte hinzufügen, bevor das Aquarium angelegt wird.",
+        "description": "Lege zuerst dein Aquarium mit Netto-Wasservolumen, Besatzprofil, Versorgungssystem und Sollwert-Modus an. Eine ICP ist dafür noch nicht erforderlich. Nach dem Anlegen kannst du die erste oder weitere ICP-Analysen jederzeit über Konfigurieren importieren.",
         "data": {
           "aquarium_name": "Name des Aquariums",
           "aquarium_volume_l": "Netto-Wasservolumen",
           "stocking_profile": "Besatzprofil",
           "supply_system": "Versorgungssystem",
-          "pdf_file": "ICP-PDF-Bericht",
           "target_mode": "Sollbereiche"
         }
       },
@@ -54,6 +53,13 @@
           "target_magnesium_min": "Magnesium Minimum",
           "target_magnesium_max": "Magnesium Maximum"
         }
+      },
+      "custom_supply_system": {
+        "title": "Eigenes Versorgungssystem",
+        "description": "Gib den Namen deines Versorgungssystems an.",
+        "data": {
+          "custom_supply_system": "Name des Versorgungssystems"
+        }
       }
     },
     "error": {
@@ -63,7 +69,8 @@
       "unknown": "Beim Lesen der PDF ist ein unerwarteter Fehler aufgetreten.",
       "invalid_aquarium_profile": "Bitte gib einen gültigen Aquariumnamen, ein Netto-Wasservolumen über 0 L, ein Besatzprofil und ein Versorgungssystem an.",
       "provider_mismatch": "Der PDF-Bericht passt nicht zum ausgewählten ICP-Anbieter. Wähle den automatisch erkannten Anbieter oder ein anderes passendes Labor.",
-      "invalid_custom_targets": "Bitte gib für jeden eigenen Zielbereich Minimum und Maximum an. Das Minimum darf nicht größer als das Maximum sein."
+      "invalid_custom_targets": "Bitte gib für jeden eigenen Zielbereich Minimum und Maximum an. Das Minimum darf nicht größer als das Maximum sein.",
+      "invalid_custom_supply_system": "Bitte gib einen gültigen Namen für das Versorgungssystem an."
     }
   },
   "options": {
@@ -126,6 +133,13 @@
           "target_magnesium_min": "Magnesium Minimum",
           "target_magnesium_max": "Magnesium Maximum"
         }
+      },
+      "custom_supply_system": {
+        "title": "Eigenes Versorgungssystem",
+        "description": "Gib den Namen deines Versorgungssystems an.",
+        "data": {
+          "custom_supply_system": "Name des Versorgungssystems"
+        }
       }
     },
     "error": {
@@ -135,7 +149,8 @@
       "unknown": "Beim Lesen der PDF ist ein unerwarteter Fehler aufgetreten.",
       "invalid_aquarium_profile": "Bitte gib ein Netto-Wasservolumen über 0 L, ein Besatzprofil und ein Versorgungssystem an.",
       "provider_mismatch": "Der PDF-Bericht passt nicht zum ausgewählten ICP-Anbieter. Wähle den automatisch erkannten Anbieter oder ein anderes passendes Labor.",
-      "invalid_custom_targets": "Bitte gib für jeden eigenen Zielbereich Minimum und Maximum an. Das Minimum darf nicht größer als das Maximum sein."
+      "invalid_custom_targets": "Bitte gib für jeden eigenen Zielbereich Minimum und Maximum an. Das Minimum darf nicht größer als das Maximum sein.",
+      "invalid_custom_supply_system": "Bitte gib einen gültigen Namen für das Versorgungssystem an."
     }
   }
 }

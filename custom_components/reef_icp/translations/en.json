@@ -3,13 +3,12 @@
     "step": {
       "user": {
         "title": "Reef ICP",
-        "description": "Create an aquarium profile with net water volume, stocking profile, dosing system and target-source mode, then upload the first ICP PDF. You can keep the target ranges from each laboratory report or define personal aquarium ranges for salinity, alkalinity, calcium and magnesium. After confirming the first report, more existing ICP reports can be added before the aquarium is created.",
+        "description": "Create the aquarium first with its net water volume, stocking profile, dosing/supply system and target-source mode. An ICP report is not required yet. After creation, the first or any later ICP analyses can be imported at any time through Configure.",
         "data": {
           "aquarium_name": "Aquarium name",
           "aquarium_volume_l": "Net water volume",
           "stocking_profile": "Stocking profile",
           "supply_system": "Dosing / supply system",
-          "pdf_file": "ICP PDF report",
           "target_mode": "Target ranges"
         }
       },
@@ -54,6 +53,13 @@
           "target_magnesium_min": "Magnesium minimum",
           "target_magnesium_max": "Magnesium maximum"
         }
+      },
+      "custom_supply_system": {
+        "title": "Custom dosing / supply system",
+        "description": "Enter the name of your dosing or supply system.",
+        "data": {
+          "custom_supply_system": "Supply-system name"
+        }
       }
     },
     "error": {
@@ -63,7 +69,8 @@
       "unknown": "An unexpected error occurred while reading the PDF.",
       "invalid_aquarium_profile": "Enter a valid aquarium name, a net water volume greater than 0 L, a stocking profile and a dosing system.",
       "provider_mismatch": "The PDF does not match the selected ICP provider. Choose the automatically detected provider or another matching laboratory.",
-      "invalid_custom_targets": "For every personal target, enter both minimum and maximum and make sure the minimum does not exceed the maximum."
+      "invalid_custom_targets": "For every personal target, enter both minimum and maximum and make sure the minimum does not exceed the maximum.",
+      "invalid_custom_supply_system": "Please enter a valid name for the dosing or supply system."
     }
   },
   "options": {
@@ -126,6 +133,13 @@
           "target_magnesium_min": "Magnesium minimum",
           "target_magnesium_max": "Magnesium maximum"
         }
+      },
+      "custom_supply_system": {
+        "title": "Custom dosing / supply system",
+        "description": "Enter the name of your dosing or supply system.",
+        "data": {
+          "custom_supply_system": "Supply-system name"
+        }
       }
     },
     "error": {
@@ -135,7 +149,8 @@
       "unknown": "An unexpected error occurred while reading the PDF.",
       "invalid_aquarium_profile": "Enter a net water volume greater than 0 L, a stocking profile and a dosing system.",
       "provider_mismatch": "The PDF does not match the selected ICP provider. Choose the automatically detected provider or another matching laboratory.",
-      "invalid_custom_targets": "For every personal target, enter both minimum and maximum and make sure the minimum does not exceed the maximum."
+      "invalid_custom_targets": "For every personal target, enter both minimum and maximum and make sure the minimum does not exceed the maximum.",
+      "invalid_custom_supply_system": "Please enter a valid name for the dosing or supply system."
     }
   }
 }
