@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.14.0 - Development
+
+### Added
+
+- Added the first automated regression-test suite for supply-system calculations, personal target handling, osmosis normalization and release metadata.
+- Added a GitHub Actions workflow that runs the regression tests automatically on pushes to `main`, pull requests and manual workflow runs.
+- Added `docs/SUPPORT_MATRIX.md` to make provider and supply-system coverage explicit.
+- Expanded **Tropic Marin Original Balling** support with verified correction products for **Magnesium, Potassium, Iodine, Bromine and Iron** in addition to the existing Calcium / Part A and Alkalinity / Part B calculations.
+- Added structured Tropic Marin **K+ Elements** and **A- Elements** maintenance metadata using the manufacturer's published 1 ml / 100 l daily dosage and 2 ml / 100 l maximum dosage.
+
+### Safety
+
+- Osmosis / RO-water measurements are now explicitly excluded from **all aquarium supply-system dosing calculations**. A source-water calcium, potassium or trace-element result can therefore never create an aquarium supplement recommendation merely because it shares the same normalized analyte key.
+- Mixed K+ Elements / A- Elements are not converted into invented analyte-specific correction strengths. Numeric correction is only produced for Tropic Marin products with a published individual product concentration.
+
+### Testing
+
+- Added regression coverage for Fauna Marin, ATI, Oceamo, TRITON and Tropic Marin supply-system paths.
+- Added tests for personal target ranges without mutating the imported laboratory result.
+- Added tests ensuring osmosis display-name normalization does not change stable measurement identity.
+- Added a regression test proving that osmosis measurements never generate aquarium dosing recommendations.
+
+### Versioning
+
+- Bumped the Home Assistant integration version to `0.14.0`.
+- The bundled dashboard card is unchanged in this step.
+
 ## 0.13.8 - Development
 
 ### Changed
