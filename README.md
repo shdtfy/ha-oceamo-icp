@@ -177,6 +177,7 @@ Each aquarium can now store:
 - **Net water volume** in liters
 - **Stocking profile**
 - **Dosing / supply system**, independent of the ICP laboratory
+- Optional **personal target ranges** for salinity, alkalinity, calcium and magnesium
 
 Stocking-profile presets currently include **Mixed Reef**, **SPS-dominant**, **LPS-dominant**, **Soft-coral dominant**, **Fish Only** and **Other / custom**.
 
@@ -186,7 +187,28 @@ Built-in presets currently include **Fauna Marin Balling Light**, **ATI Essentia
 
 These settings remain attached to the aquarium when additional reports from Oceamo, Fauna Marin, ATI, TRITON, Tropic Marin or future providers are imported. Existing aquariums can edit the profile through **Configure → Aquarium settings**.
 
-This is the foundation for a provider-independent recommendation engine: laboratory measurements stay normalized by Reef ICP, while dosing recommendations can be generated for the aquarium's chosen supply system and net water volume rather than blindly copying the laboratory's product recommendations.
+### Personal aquarium target ranges
+
+Starting with version `0.13.5`, an aquarium can optionally define its own operating ranges for:
+
+- **Salinity**
+- **Alkalinity (KH)**
+- **Calcium**
+- **Magnesium**
+
+The feature is deliberately opt-in. By default Reef ICP continues to use the target/reference range supplied by each imported ICP report.
+
+Personal targets are stored as an aquarium setting, not as a modification of the laboratory result. The original laboratory target and laboratory status remain preserved in every report. The bundled card shows **Your target** and **Lab** separately when a personal range is active.
+
+A personal target can be configured for only one or some of the four parameters. Leaving both minimum and maximum empty for one parameter keeps that parameter on the laboratory target.
+
+Supply-system correction calculations use the personal range for these four parameters when one is configured. Direct recommendations imported from the laboratory report remain laboratory recommendations and are never rewritten to match the personal aquarium target.
+
+Personal targets do not apply to osmosis / RO-water measurements.
+
+The dashboard also separates unknown laboratory results into **Not detectable**, **Not determined** and **Other unclear** instead of combining all unknown states into one counter.
+
+This is the foundation for a provider-independent recommendation engine: laboratory measurements stay normalized by Reef ICP, while dosing recommendations can be generated for the aquarium's chosen supply system, net water volume and optional personal operating targets rather than blindly copying the laboratory's product recommendations.
 
 ## Action plan and configurable card sections
 
@@ -351,7 +373,7 @@ The calculation uses:
 
 1. the aquarium's stored **net water volume**,
 2. the normalized current ICP value,
-3. the target value/range in the imported report, and
+3. the aquarium's personal target range for salinity / KH / calcium / magnesium when configured, otherwise the target value/range in the imported report, and
 4. the published manufacturer strength of the selected product.
 
 When the manufacturer publishes a maximum daily increase, Reef ICP also calculates a minimum number of dosing days and an approximate amount per day. If no official daily limit is available in the implemented source data, the card deliberately shows only the total correction and warns against interpreting it as an automatic one-time dose.
@@ -436,7 +458,7 @@ A manually selected date is stored with `analysis_date_source: manual`.
 
 - Install as a HACS custom repository
 - Add **Reef ICP** under **Settings → Devices & services**
-- Create an aquarium profile with net water volume, a persistent stocking profile and a dosing/supply system
+- Create an aquarium profile with net water volume, a persistent stocking profile, a dosing/supply system and optional personal Salinity/KH/Ca/Mg target ranges
 - Import ICP PDFs directly in Home Assistant
 - Prepare and import several ICP reports in one batch during initial setup or later through Configure
 - Mix supported providers inside the same import batch while validating every PDF separately
@@ -618,6 +640,8 @@ Version `0.11.0` completed the project-wide namespace rename. Existing test inst
 - [x] Show laboratory interpretation / evaluation text inside the card when present
 - [x] Show laboratory dosing recommendations inside the card
 - [x] Persistent aquarium stocking profile with dashboard display
+- [x] Optional personal Salinity/KH/Calcium/Magnesium target ranges with laboratory-target preservation
+- [x] Split unknown dashboard counts into not detectable / not determined / other unclear
 - [x] Latest-analysis status-change summary and repeated multi-report trends
 - [x] Compact action plan combining existing guidance without merging doses
 - [x] Per-section visibility controls in the graphical card editor

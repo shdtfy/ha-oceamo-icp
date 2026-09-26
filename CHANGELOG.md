@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.13.5 - Development
+
+### Added
+
+- Added optional **personal aquarium target ranges** for salinity, alkalinity (KH), calcium and magnesium.
+- Personal targets can be enabled during initial aquarium setup or later through **Configure → Aquarium settings**.
+- Each of the four parameters can independently keep the laboratory target by leaving its custom minimum and maximum empty.
+- The original laboratory target and laboratory status remain untouched in the imported report.
+- The bundled card shows **Your target** and **Lab** separately whenever a personal target is configured.
+- Personal targets never apply to osmosis / RO-water measurements.
+- Supply-system correction calculations use the aquarium's personal range for Salinity/KH/Ca/Mg when configured, while direct laboratory recommendations remain unchanged.
+- Unknown dashboard counts are now split into **Not detectable**, **Not determined** and **Other unclear** instead of one generic unknown bucket.
+
+### Internal
+
+- Added `custom_targets` to the persistent aquarium options model.
+- Existing manufacturer recommendation rules remain in `recommendations_core.py`; the public `recommendations.py` wrapper applies personal targets only to Reef ICP's supply-system calculation copy.
+- Added a small frontend companion patch for target-source display and unknown-state breakdown while keeping the established main card implementation intact.
+- Bumped integration and bundled-card cache version to `0.13.5`.
+
 ## 0.13.4 - Development
 
 ### Fixed
