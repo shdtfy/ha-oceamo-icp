@@ -1,9 +1,9 @@
 """Recommendation wrapper adding aquarium-specific personal target ranges.
 
 The established manufacturer calculation rules stay in ``recommendations_core``.
-This wrapper only substitutes a user's optional aquarium target range while
-building Reef ICP supply-system recommendations. Laboratory targets and status
-stored in the imported ICP report remain untouched.
+This wrapper substitutes optional aquarium target ranges, adds the independently
+verified Tropic Marin correction products, and keeps RO/osmosis measurements out
+of aquarium dosing recommendations.
 """
 
 from __future__ import annotations
@@ -25,11 +25,46 @@ from .recommendations_core import (
 _TROPIC_MARIN_ORIGINAL_BALLING_URL = (
     "https://www.tropic-marin-smartinfo.com/original-balling-components"
 )
+_TROPIC_MARIN_POTASSIUM_URL = (
+    "https://www.tropic-marin-smartinfo.com/potassium"
+)
+_TROPIC_MARIN_BIO_MAGNESIUM_URL = (
+    "https://www.tropic-marin-smartinfo.com/bio-magnesium"
+)
+_TROPIC_MARIN_IODINE_URL = (
+    "https://www.tropic-marin-smartinfo.com/iodine"
+)
+_TROPIC_MARIN_BROMINE_URL = (
+    "https://www.tropic-marin-smartinfo.com/bromine"
+)
+_TROPIC_MARIN_IRON_URL = (
+    "https://www.tropic-marin-smartinfo.com/iron"
+)
+_TROPIC_MARIN_K_ELEMENTS_URL = (
+    "https://www.tropic-marin-smartinfo.com/k-elements"
+)
+_TROPIC_MARIN_A_ELEMENTS_URL = (
+    "https://www.tropic-marin-smartinfo.com/a-elements"
+)
 
-# Manufacturer reference for prepared Original Balling solutions:
-# 50 ml per 100 l raises calcium by 10 mg/l (Part A) and alkalinity by
-# 1.4 dKH (Part B). The published maximum is 150 ml of each solution per
-# 100 l/day, corresponding to +30 mg/l Ca or +4.2 dKH per day.
+# Manufacturer references used below:
+# - Original Balling: 50 ml / 100 l -> +10 mg/l Ca or +1.4 dKH,
+#   maximum 150 ml / 100 l / day.
+# - Potassium: 10 ml / 100 l -> +10 mg/l K,
+#   maximum +20 mg/l / day.
+# - Bio-Magnesium Liquid: 50 ml / 100 l -> +25 mg/l Mg,
+#   maximum +25 mg/l / day.
+# - Iodine: 1.5 ml / 100 l -> +15 µg/l I,
+#   maximum +30 µg/l / day.
+# - Bromine: 5 ml / 100 l -> +5 mg/l Br,
+#   maximum +10 mg/l / day.
+# - Iron: 1 ml / 100 l -> +1 µg/l Fe,
+#   maximum +4 µg/l / day.
+#
+# K+ Elements and A- Elements are intentionally NOT converted into
+# analyte-specific correction formulas: Tropic Marin publishes a maintenance
+# dosage for the mixed solutions, but not the individual concentration of each
+# element in those mixtures.
 _TROPIC_MARIN_ORIGINAL_BALLING_RULES: dict[str, dict[str, Any]] = {
     "calcium": {
         "name": "Calcium",
@@ -59,14 +94,125 @@ _TROPIC_MARIN_ORIGINAL_BALLING_RULES: dict[str, dict[str, Any]] = {
         "source_name": "Tropic Marin Original Balling",
         "source_url": _TROPIC_MARIN_ORIGINAL_BALLING_URL,
     },
+    "magnesium": {
+        "name": "Magnesium",
+        "product": "Tropic Marin Bio-Magnesium Liquid",
+        "kind": "core_correction",
+        "dose_amount": 50.0,
+        "dose_unit": "ml",
+        "increase": 25.0,
+        "unit": "mg/l",
+        "max_daily_increase": 25.0,
+        "solution": None,
+        "requires_report_type": None,
+        "source_name": "Tropic Marin Bio-Magnesium",
+        "source_url": _TROPIC_MARIN_BIO_MAGNESIUM_URL,
+    },
+    "kalium": {
+        "name": "Kalium",
+        "product": "Tropic Marin Potassium",
+        "kind": "single_element",
+        "dose_amount": 10.0,
+        "dose_unit": "ml",
+        "increase": 10.0,
+        "unit": "mg/l",
+        "max_daily_increase": 20.0,
+        "solution": None,
+        "requires_report_type": None,
+        "source_name": "Tropic Marin Potassium",
+        "source_url": _TROPIC_MARIN_POTASSIUM_URL,
+    },
+    "iod": {
+        "name": "Iod",
+        "product": "Tropic Marin Iodine",
+        "kind": "single_element",
+        "dose_amount": 1.5,
+        "dose_unit": "ml",
+        "increase": 15.0,
+        "unit": "µg/l",
+        "max_daily_increase": 30.0,
+        "solution": None,
+        "requires_report_type": None,
+        "source_name": "Tropic Marin Iodine",
+        "source_url": _TROPIC_MARIN_IODINE_URL,
+    },
+    "bromid": {
+        "name": "Bromid",
+        "product": "Tropic Marin Bromine",
+        "kind": "single_element",
+        "dose_amount": 5.0,
+        "dose_unit": "ml",
+        "increase": 5.0,
+        "unit": "mg/l",
+        "max_daily_increase": 10.0,
+        "solution": None,
+        "requires_report_type": None,
+        "source_name": "Tropic Marin Bromine",
+        "source_url": _TROPIC_MARIN_BROMINE_URL,
+    },
+    "eisen": {
+        "name": "Eisen",
+        "product": "Tropic Marin Iron",
+        "kind": "single_element",
+        "dose_amount": 1.0,
+        "dose_unit": "ml",
+        "increase": 1.0,
+        "unit": "µg/l",
+        "max_daily_increase": 4.0,
+        "solution": None,
+        "requires_report_type": None,
+        "source_name": "Tropic Marin Iron",
+        "source_url": _TROPIC_MARIN_IRON_URL,
+    },
 }
+
+_TROPIC_MARIN_TRACE_MAINTENANCE = {
+    "k_plus_elements": {
+        "product": "Tropic Marin K+ Elements",
+        "elements": [
+            "barium",
+            "bor",
+            "chrom",
+            "eisen",
+            "cobalt",
+            "kupfer",
+            "mangan",
+            "nickel",
+            "strontium",
+            "zink",
+        ],
+        "daily_dose_ml_per_100_l": 1.0,
+        "max_daily_dose_ml_per_100_l": 2.0,
+        "source_url": _TROPIC_MARIN_K_ELEMENTS_URL,
+    },
+    "a_minus_elements": {
+        "product": "Tropic Marin A- Elements",
+        "elements": [
+            "bromid",
+            "fluorid",
+            "iod",
+            "lithium",
+            "molybdaen",
+            "selen",
+            "vanadium",
+        ],
+        "daily_dose_ml_per_100_l": 1.0,
+        "max_daily_dose_ml_per_100_l": 2.0,
+        "source_url": _TROPIC_MARIN_A_ELEMENTS_URL,
+    },
+}
+
+
+def _is_aquarium_measurement(measurement: dict[str, Any]) -> bool:
+    """Return True only for aquarium-water values used for dosing guidance."""
+    return str(measurement.get("category") or "") != "osmosis"
 
 
 def _build_tropic_marin_original_balling(
     aquarium_volume_l: Any,
     measurements: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Build numeric Original Balling A/B corrections from manufacturer data."""
+    """Build verified Tropic Marin corrections from published product strengths."""
     system = SUPPLY_SYSTEM_TROPIC_MARIN_ORIGINAL_BALLING
     system_name = SUPPLY_SYSTEM_NAMES[system]
 
@@ -86,6 +232,8 @@ def _build_tropic_marin_original_balling(
 
     items: list[dict[str, Any]] = []
     for measurement in measurements:
+        if not _is_aquarium_measurement(measurement):
+            continue
         rule = _TROPIC_MARIN_ORIGINAL_BALLING_RULES.get(
             str(measurement.get("key") or "")
         )
@@ -106,8 +254,14 @@ def _build_tropic_marin_original_balling(
         "maintenance_note": "tropic_marin_original_balling_consumption",
         "maintenance_requires_consumption": True,
         "maintenance_source_url": _TROPIC_MARIN_ORIGINAL_BALLING_URL,
-        "trace_elements_implemented": False,
-        "numeric_trace_calculation": False,
+        "trace_elements_implemented": True,
+        "numeric_trace_calculation": True,
+        "trace_maintenance": copy.deepcopy(_TROPIC_MARIN_TRACE_MAINTENANCE),
+        "trace_maintenance_note": (
+            "K+ Elements and A- Elements are mixed maintenance supplements. "
+            "Their published 1 ml/100 l/day dosage is preserved as guidance; "
+            "Reef ICP does not invent individual element concentrations for them."
+        ),
     }
 
 
@@ -165,11 +319,16 @@ def build_supply_recommendations(
     measurements: list[dict[str, Any]],
     report_type: str | None = None,
 ) -> dict[str, Any] | None:
-    """Build supply recommendations using personal targets where configured."""
+    """Build supply recommendations using aquarium-water values only."""
     prepared_measurements: list[dict[str, Any]] = []
     custom_keys: set[str] = set()
 
     for measurement in measurements:
+        # RO/osmosis measurements belong to source-water diagnostics and must
+        # never generate aquarium supplement dosing instructions.
+        if not _is_aquarium_measurement(measurement):
+            continue
+
         prepared, used_custom_target = _measurement_for_personal_target(
             measurement
         )
