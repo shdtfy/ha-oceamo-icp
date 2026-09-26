@@ -3,42 +3,35 @@
     "step": {
       "user": {
         "title": "Reef ICP",
-        "description": "Lege zuerst dein Aquarium mit Netto-Wasservolumen, Besatzprofil, Versorgungssystem und Sollwert-Modus an. Eine ICP ist dafür noch nicht erforderlich. Nach dem Anlegen kannst du die erste oder weitere ICP-Analysen jederzeit über Konfigurieren importieren.",
+        "description": "Lege zuerst dein Aquarium mit Netto-Wasservolumen, Besatzprofil, Versorgungssystem, separater Riff-/Nährstoffmethode und Sollwert-Modus an. Eine ICP ist dafür noch nicht erforderlich. Nach dem Anlegen kannst du die erste oder weitere ICP-Analysen jederzeit über Konfigurieren importieren.",
         "data": {
           "aquarium_name": "Name des Aquariums",
           "aquarium_volume_l": "Netto-Wasservolumen",
           "stocking_profile": "Besatzprofil",
           "supply_system": "Versorgungssystem",
+          "reef_method": "Riff-/Nährstoffmethode",
           "target_mode": "Sollbereiche"
         }
       },
       "add_icp": {
         "title": "Weitere ICP-Analyse hinzufügen",
         "description": "Für dieses Aquarium sind bereits {report_count} ICP-Bericht(e) vorbereitet.\n\n{report_list}\n\nLade eine weitere ICP-PDF hoch, um sie demselben Import hinzuzufügen.",
-        "data": {
-          "pdf_file": "ICP-PDF-Bericht"
-        }
+        "data": {"pdf_file": "ICP-PDF-Bericht"}
       },
       "import_more": {
         "title": "ICP-Berichte vorbereitet",
         "description": "Vorbereitete ICP-Berichte: {report_count}\n\n{report_list}\n\nDu kannst eine weitere ICP hinzufügen oder das Aquarium jetzt anlegen. Die Berichte werden chronologisch gespeichert. Eine doppelte Analyse mit demselben Anbieter und derselben Berichts-ID ersetzt die frühere Kopie innerhalb dieses Imports.",
-        "data": {
-          "batch_action": "Nächster Schritt"
-        }
+        "data": {"batch_action": "Nächster Schritt"}
       },
       "analysis_date": {
         "title": "Analysedatum auswählen",
         "description": "Reef ICP hat {provider} erkannt, konnte aber kein zuverlässiges Analysedatum im Bericht oder Dateinamen finden. Bitte wähle das Datum dieser Analyse aus.",
-        "data": {
-          "analysis_date": "Analysedatum"
-        }
+        "data": {"analysis_date": "Analysedatum"}
       },
       "confirm_provider": {
         "title": "ICP-Anbieter bestätigen",
         "description": "Automatisch erkannt: {detected_provider}\n\nBerichtstyp: {report_type}\nAnalysenummer: {analysis_number}\nAnalysedatum: {analysis_date}\n\nBestätige den Anbieter oder wähle ein anderes unterstütztes Labor. Reef ICP prüft die PDF mit dem ausgewählten Parser erneut, bevor sie dem Import hinzugefügt wird.",
-        "data": {
-          "provider": "ICP-Anbieter"
-        }
+        "data": {"provider": "ICP-Anbieter"}
       },
       "custom_targets": {
         "title": "Eigene Zielbereiche",
@@ -57,9 +50,7 @@
       "custom_supply_system": {
         "title": "Eigenes Versorgungssystem",
         "description": "Gib den Namen deines Versorgungssystems an.",
-        "data": {
-          "custom_supply_system": "Name des Versorgungssystems"
-        }
+        "data": {"custom_supply_system": "Name des Versorgungssystems"}
       }
     },
     "error": {
@@ -67,7 +58,7 @@
       "invalid_icp_pdf": "Der Anbieter wurde erkannt, der PDF-Bericht konnte aber nicht als unterstützte ICP-Analyse verarbeitet werden.",
       "invalid_analysis_date": "Bitte wähle ein gültiges Analysedatum aus.",
       "unknown": "Beim Lesen der PDF ist ein unerwarteter Fehler aufgetreten.",
-      "invalid_aquarium_profile": "Bitte gib einen gültigen Aquariumnamen, ein Netto-Wasservolumen über 0 L, ein Besatzprofil und ein Versorgungssystem an.",
+      "invalid_aquarium_profile": "Bitte gib einen gültigen Aquariumnamen, ein Netto-Wasservolumen über 0 L, ein Besatzprofil, ein Versorgungssystem und eine Riff-/Nährstoffmethode an.",
       "provider_mismatch": "Der PDF-Bericht passt nicht zum ausgewählten ICP-Anbieter. Wähle den automatisch erkannten Anbieter oder ein anderes passendes Labor.",
       "invalid_custom_targets": "Bitte gib für jeden eigenen Zielbereich Minimum und Maximum an. Das Minimum darf nicht größer als das Maximum sein.",
       "invalid_custom_supply_system": "Bitte gib einen gültigen Namen für das Versorgungssystem an."
@@ -85,40 +76,33 @@
       "analysis_date": {
         "title": "Analysedatum auswählen",
         "description": "Reef ICP hat {provider} erkannt, konnte aber kein zuverlässiges Analysedatum im Bericht oder Dateinamen finden. Bitte wähle das Datum dieser Analyse aus.",
-        "data": {
-          "analysis_date": "Analysedatum"
-        }
+        "data": {"analysis_date": "Analysedatum"}
       },
       "import_icp": {
         "title": "ICP-Analysen importieren",
         "description": "Lade eine ICP-PDF hoch. Reef ICP erkennt den Anbieter automatisch und lässt dich die Erkennung bestätigen. Danach kannst du weitere Berichte zum selben Import hinzufügen. Bereits gespeicherte Berichte mit demselben Anbieter und derselben Berichts-ID werden ersetzt.\n\nAktuell vorbereitete Berichte in diesem Import: {report_count}\n\n{report_list}",
-        "data": {
-          "pdf_file": "ICP-PDF-Bericht"
-        }
+        "data": {"pdf_file": "ICP-PDF-Bericht"}
       },
       "import_more": {
         "title": "ICP-Berichte vorbereitet",
         "description": "Vorbereitete ICP-Berichte: {report_count}\n\n{report_list}\n\nDu kannst eine weitere ICP hinzufügen oder den Sammelimport abschließen. Die Berichte werden chronologisch in die Aquarium-Historie einsortiert.",
-        "data": {
-          "batch_action": "Nächster Schritt"
-        }
+        "data": {"batch_action": "Nächster Schritt"}
       },
       "aquarium_settings": {
         "title": "Aquarium-Einstellungen",
-        "description": "Lege Netto-Wasservolumen, Besatzprofil, Versorgungssystem und den Sollwert-Modus fest. Eigene Zielbereiche gelten unabhängig davon, bei welchem Labor die ICP durchgeführt wird.",
+        "description": "Lege Netto-Wasservolumen, Besatzprofil, Versorgungssystem, separate Riff-/Nährstoffmethode und den Sollwert-Modus fest. Versorgung und Riffmethode sind bewusst getrennt, damit zum Beispiel Balling Light + ZEO LIGHT gemeinsam gewählt werden können.",
         "data": {
           "aquarium_volume_l": "Netto-Wasservolumen",
           "stocking_profile": "Besatzprofil",
           "supply_system": "Versorgungssystem",
+          "reef_method": "Riff-/Nährstoffmethode",
           "target_mode": "Sollbereiche"
         }
       },
       "confirm_provider": {
         "title": "ICP-Anbieter bestätigen",
         "description": "Automatisch erkannt: {detected_provider}\n\nBerichtstyp: {report_type}\nAnalysenummer: {analysis_number}\nAnalysedatum: {analysis_date}\n\nBestätige den Anbieter oder wähle ein anderes unterstütztes Labor. Reef ICP prüft die PDF mit dem ausgewählten Parser erneut, bevor sie dem Import hinzugefügt wird.",
-        "data": {
-          "provider": "ICP-Anbieter"
-        }
+        "data": {"provider": "ICP-Anbieter"}
       },
       "custom_targets": {
         "title": "Eigene Zielbereiche",
@@ -137,9 +121,7 @@
       "custom_supply_system": {
         "title": "Eigenes Versorgungssystem",
         "description": "Gib den Namen deines Versorgungssystems an.",
-        "data": {
-          "custom_supply_system": "Name des Versorgungssystems"
-        }
+        "data": {"custom_supply_system": "Name des Versorgungssystems"}
       }
     },
     "error": {
@@ -147,7 +129,7 @@
       "invalid_icp_pdf": "Der Anbieter wurde erkannt, der PDF-Bericht konnte aber nicht als unterstützte ICP-Analyse verarbeitet werden.",
       "invalid_analysis_date": "Bitte wähle ein gültiges Analysedatum aus.",
       "unknown": "Beim Lesen der PDF ist ein unerwarteter Fehler aufgetreten.",
-      "invalid_aquarium_profile": "Bitte gib ein Netto-Wasservolumen über 0 L, ein Besatzprofil und ein Versorgungssystem an.",
+      "invalid_aquarium_profile": "Bitte gib ein Netto-Wasservolumen über 0 L, ein Besatzprofil, ein Versorgungssystem und eine Riff-/Nährstoffmethode an.",
       "provider_mismatch": "Der PDF-Bericht passt nicht zum ausgewählten ICP-Anbieter. Wähle den automatisch erkannten Anbieter oder ein anderes passendes Labor.",
       "invalid_custom_targets": "Bitte gib für jeden eigenen Zielbereich Minimum und Maximum an. Das Minimum darf nicht größer als das Maximum sein.",
       "invalid_custom_supply_system": "Bitte gib einen gültigen Namen für das Versorgungssystem an."
