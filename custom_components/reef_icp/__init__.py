@@ -15,7 +15,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
-from .const import CONF_REPORTS
+from .const import CONF_REPORTS, DOMAIN
 from .statistics import (
     async_import_icp_statistics,
     async_rebuild_icp_statistics,
@@ -30,7 +30,7 @@ CARD_RESOURCE_URL = f"{CARD_URL}?v={CARD_VERSION}"
 CARD_FILE = Path(__file__).parent / "www" / "reef-icp-card.js"
 _SENSOR_PLATFORM_ENTRIES_KEY = f"{DOMAIN}_sensor_platform_entries"
 
-_NOT_DETERMINED_RAW_VALUES = {"", "n.g.", "n.g", "n.b.", "n.b", "---", "-"}
+_NOT_DETERMINED_RAW_VALUES = {"n.g.", "n.g", "n.b.", "n.b", "---", "-"}
 
 
 def _measurement_is_determined(measurement: dict[str, Any]) -> bool:
