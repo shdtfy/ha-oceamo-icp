@@ -2,6 +2,16 @@
 
 ## 0.13.1 - Development
 
+### Added
+
+- Added a **batch import flow** for ICP reports during both initial aquarium setup and later imports through **Configure**.
+- After each confirmed report, Reef ICP now shows the prepared import list and lets the user either **Add another ICP** or **Finish import**.
+- Each PDF is still detected, confirmed and validated independently before it enters the batch.
+- One batch can contain reports from different supported laboratories.
+- Pending reports use the same provider + provider-report-ID upsert rules as stored reports, so duplicate identities are replaced instead of duplicated.
+- The completed batch is kept in chronological order before it is stored.
+- Replacing an already stored report through a batch import continues to request the existing long-term-statistics rebuild so stale recorder points are removed.
+
 ### Changed
 
 - Split the **Action plan** into two visual groups:
@@ -538,7 +548,7 @@ With a current target range of `400–440 mg/l` calcium, a previous value of `44
 ### Added
 
 - Added automatic detection and parsing for the current ATI laboratory PDF format.
-- Added ATI metadata including analysis ID, barcode, aquarium name, net volume, analysis reason and laboratory dates.
+- Added ATI metadata including analysis ID, barcode, aquarium name, volume, reason and laboratory dates.
 - Added ATI basis values, major elements, trace elements, nutrients and pollutants to the shared provider-neutral measurement model.
 - Added ATI ideal values and normalization of textual assessments such as `TOP`, `WENIG`, `ERHÖHT`, `ZU HOCH`, `Achtung` and `Kritisch`.
 - Added handling for ATI `---` non-detect values without converting them to numeric zero.
@@ -555,7 +565,7 @@ With a current target range of `400–440 mg/l` calcium, a previous value of `44
 ### Tested
 
 - Regression-tested the parser against the existing Oceamo test report and all four available Fauna Marin reports.
-- Developed and validated the ATI parser against the structure and values of a real public 2026 ATI report (analysis ID `372482`).
+- Developed and validated the ATI parser against the structure and values of a real public 2026 ATI report (analysis ID **372482**).
 
 ## 0.5.0 - Development
 

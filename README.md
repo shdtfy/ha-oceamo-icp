@@ -71,7 +71,7 @@ Reef ICP turns uploaded laboratory reports into a provider-independent Home Assi
   </tr>
   <tr>
     <td align="center">
-      Upload a report. Reef ICP detects the supported laboratory automatically.
+      Upload and confirm one or several reports in one import session. Reef ICP detects the supported laboratory for every PDF automatically.
     </td>
     <td align="center">
       Imported analytes are exposed as normal Home Assistant entities and long-term statistics.
@@ -371,13 +371,25 @@ Examples of normalization:
 
 Measurements that are not directly comparable remain separate. For example, Fauna Marin elemental sulfur is not merged with Oceamo sulfate.
 
-## Importing another ICP
+## Importing ICP reports
 
-Open **Settings → Devices & services → Reef ICP → Configure → Import another ICP analysis** and upload the ICP PDF.
+Open **Settings → Devices & services → Reef ICP → Configure → Import ICP analyses** to add more reports to an existing aquarium.
 
-**Reef ICP detects the laboratory automatically.** After upload, a confirmation step shows the detected provider plus the report type, analysis ID and date when available. You can confirm the result or select another supported provider before the report is stored.
+Reef ICP uses a **batch import flow**. Home Assistant's native file selector still accepts one PDF at a time, but you can prepare several reports without leaving the import dialog:
 
-The selected provider parser validates the PDF again. A manual override therefore does not force an incompatible report into the wrong parser: if the PDF does not match the selected laboratory, the import stops with an error.
+1. Upload one ICP PDF.
+2. Reef ICP detects the laboratory automatically.
+3. Confirm or override the detected provider. If required, select the missing analysis date.
+4. The confirmed report is added to a temporary import list.
+5. Choose **Add another ICP** to repeat the process or **Finish import** to store the complete batch.
+
+The same batch flow is available while creating a new aquarium. After the first confirmed ICP, you can add older reports before the aquarium entry is finally created. This makes it practical to bring an existing ICP history into Reef ICP from the start.
+
+A single batch may contain reports from **different supported laboratories**. Each PDF is detected and validated independently. The final batch is sorted chronologically before it is stored.
+
+If a report in the batch has the same provider and provider report ID as another queued or already stored report, Reef ICP uses the existing upsert rules and keeps one report for that identity. Replacing an already stored report also requests the existing long-term-statistics rebuild so stale recorder points are removed.
+
+The selected provider parser validates every PDF again. A manual override therefore does not force an incompatible report into the wrong parser: if the PDF does not match the selected laboratory, that report does not enter the batch.
 
 Currently detected automatically:
 
@@ -386,7 +398,7 @@ Currently detected automatically:
 - ATI
 - TRITON (tested legacy ICP-OES format)
 
-If no supported provider can be identified, the import stops instead of guessing. Date handling is provider-independent: Reef ICP first uses a date parsed from the report, then a parsed sample date or a plausible filename date. PDF `CreationDate` metadata is not treated as an analysis date. If no trustworthy date remains, Reef ICP opens a second step with a native Home Assistant date selector. A report is replaced only when both its provider and provider report ID match an already stored report.
+If no supported provider can be identified, the current PDF import stops instead of guessing. Already confirmed reports in the same batch remain queued. Date handling is provider-independent: Reef ICP first uses a date parsed from the report, then a parsed sample date or a plausible filename date. PDF `CreationDate` metadata is not treated as an analysis date. If no trustworthy date remains, Reef ICP opens a native Home Assistant date selector.
 
 ## Analysis date handling
 
@@ -407,7 +419,9 @@ A manually selected date is stored with `analysis_date_source: manual`.
 - Add **Reef ICP** under **Settings → Devices & services**
 - Create an aquarium profile with net water volume, a persistent stocking profile and a dosing/supply system
 - Import ICP PDFs directly in Home Assistant
-- Confirm or override the automatically detected ICP provider before a report is stored
+- Prepare and import several ICP reports in one batch during initial setup or later through Configure
+- Mix supported providers inside the same import batch while validating every PDF separately
+- Confirm or override the automatically detected ICP provider before a report enters the batch
 - Store up to 100 reports per aquarium
 - Keep reports in chronological sample order
 - Keep the newest report as the current sensor state
@@ -562,7 +576,8 @@ Version `0.11.0` completed the project-wide namespace rename. Existing test inst
 4. Restart Home Assistant.
 5. Go to **Settings → Devices & services → Add integration**.
 6. Search for **Reef ICP**.
-7. Enter an aquarium name and upload the first ICP PDF. Reef ICP detects the provider automatically.
+7. Enter the aquarium profile and upload the first ICP PDF. Reef ICP detects the provider automatically.
+8. After confirming the first report, optionally choose **Add another ICP** to queue older analyses. Choose **Finish import** when the initial history is complete.
 
 ## Roadmap
 
@@ -572,6 +587,7 @@ Version `0.11.0` completed the project-wide namespace rename. Existing test inst
 - [x] Current ATI laboratory PDF parser
 - [x] Automatic provider detection during import
 - [x] Provider confirmation and manual override with parser re-validation
+- [x] Batch import for several ICP reports during initial setup and later imports
 - [x] Cross-provider normalized history
 - [x] Long-term statistics
 - [x] Previous-ICP comparison
