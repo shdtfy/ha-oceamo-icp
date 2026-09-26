@@ -51,6 +51,7 @@ from .const import (
     SUPPLY_SYSTEM_NONE,
     SUPPLY_SYSTEM_OCEAMO_DUO,
     SUPPLY_SYSTEM_TRITON_METHOD,
+    SUPPLY_SYSTEM_TROPIC_MARIN_ORIGINAL_BALLING,
     STOCKING_PROFILE_FISH_ONLY,
     STOCKING_PROFILE_LPS_DOMINANT,
     STOCKING_PROFILE_MIXED_REEF,
@@ -349,6 +350,10 @@ def _supply_system_options(
         SelectOptionDict(
             value=SUPPLY_SYSTEM_OCEAMO_DUO,
             label="Oceamo DUO",
+        ),
+        SelectOptionDict(
+            value=SUPPLY_SYSTEM_TROPIC_MARIN_ORIGINAL_BALLING,
+            label="Tropic Marin Original Balling",
         ),
     ]
 

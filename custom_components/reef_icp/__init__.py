@@ -24,7 +24,7 @@ from .statistics import (
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
-CARD_VERSION = "0.13.6"
+CARD_VERSION = "0.13.7"
 CARD_URL = "/reef_icp/reef-icp-card.js"
 CARD_RESOURCE_URL = f"{CARD_URL}?v={CARD_VERSION}"
 CARD_FILE = Path(__file__).parent / "www" / "reef-icp-card.js"
@@ -79,11 +79,19 @@ def _annotate_history_visibility(
         for measurement in report.get("measurements", []):
             if not isinstance(measurement, dict):
                 continue
+            category = str(measurement.get("category") or "unknown")
             key = (
-                str(measurement.get("category") or "unknown"),
+                category,
                 str(measurement.get("key") or "unknown"),
             )
             measurement["ever_determined"] = ever_determined.get(key, False)
+
+            # Presentation-only migration for older stored osmosis reports.
+            # Keep the stable key/category while making the water source clear.
+            if category == "osmosis":
+                name = str(measurement.get("name") or "").strip()
+                if name and not name.casefold().endswith("(osmose)"):
+                    measurement["name"] = f"{name} (Osmose)"
 
     return updated
 

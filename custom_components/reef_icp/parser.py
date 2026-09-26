@@ -29,6 +29,25 @@ PROVIDER_NAMES = {
 }
 
 
+def _normalize_osmosis_display_names(report: dict[str, Any]) -> dict[str, Any]:
+    """Give every RO/osmosis result an unambiguous visible name.
+
+    The category/key stay untouched so Home Assistant entity identities and
+    long-term statistics remain stable across this presentation-only change.
+    """
+    for measurement in report.get("measurements", []):
+        if not isinstance(measurement, dict):
+            continue
+        if measurement.get("category") != "osmosis":
+            continue
+
+        name = str(measurement.get("name") or "").strip()
+        if name and not name.casefold().endswith("(osmose)"):
+            measurement["name"] = f"{name} (Osmose)"
+
+    return report
+
+
 def detect_icp_provider(path: str | Path) -> str:
     """Detect Tropic Marin first, then use the established provider detector."""
     if looks_like_tropic_marin_pdf(path):
@@ -43,8 +62,10 @@ def parse_icp_pdf_for_provider(
 ) -> dict[str, Any]:
     """Parse a PDF with the explicitly selected provider parser."""
     if provider == PROVIDER_TROPIC_MARIN:
-        return parse_tropic_marin_pdf(path, analysis_date_override)
-    return _parse_core_provider(path, provider, analysis_date_override)
+        report = parse_tropic_marin_pdf(path, analysis_date_override)
+    else:
+        report = _parse_core_provider(path, provider, analysis_date_override)
+    return _normalize_osmosis_display_names(report)
 
 
 def parse_icp_pdf(
