@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import copy
 import re
 import shutil
 import tempfile
@@ -38,6 +39,7 @@ from homeassistant.helpers.selector import (
 from .const import (
     CONF_AQUARIUM_NAME,
     CONF_AQUARIUM_VOLUME_L,
+    CONF_CUSTOM_TARGETS,
     CONF_REPORTS,
     CONF_STOCKING_PROFILE,
     CONF_SUPPLY_SYSTEM,
@@ -71,9 +73,29 @@ CONF_ANALYSIS_DATE = "analysis_date"
 CONF_PDF_FILE = "pdf_file"
 CONF_PROVIDER = "provider"
 CONF_BATCH_ACTION = "batch_action"
+CONF_TARGET_MODE = "target_mode"
+
+TARGET_MODE_LABORATORY = "laboratory"
+TARGET_MODE_CUSTOM = "custom"
+
+CONF_TARGET_SALINITY_MIN = "target_salinity_min"
+CONF_TARGET_SALINITY_MAX = "target_salinity_max"
+CONF_TARGET_ALKALINITY_MIN = "target_alkalinity_min"
+CONF_TARGET_ALKALINITY_MAX = "target_alkalinity_max"
+CONF_TARGET_CALCIUM_MIN = "target_calcium_min"
+CONF_TARGET_CALCIUM_MAX = "target_calcium_max"
+CONF_TARGET_MAGNESIUM_MIN = "target_magnesium_min"
+CONF_TARGET_MAGNESIUM_MAX = "target_magnesium_max"
 
 BATCH_ACTION_ADD = "add_another"
 BATCH_ACTION_FINISH = "finish"
+
+_CUSTOM_TARGET_FIELDS: dict[str, tuple[str, str]] = {
+    "salinitaet": (CONF_TARGET_SALINITY_MIN, CONF_TARGET_SALINITY_MAX),
+    "alkalinitaet": (CONF_TARGET_ALKALINITY_MIN, CONF_TARGET_ALKALINITY_MAX),
+    "calcium": (CONF_TARGET_CALCIUM_MIN, CONF_TARGET_CALCIUM_MAX),
+    "magnesium": (CONF_TARGET_MAGNESIUM_MIN, CONF_TARGET_MAGNESIUM_MAX),
+}
 
 
 def _cleanup_pending_pdf(pending_pdf_path: str | None) -> None:
@@ -162,6 +184,136 @@ def _normalize_stocking_profile(value: Any) -> str:
     return profile
 
 
+def _normalize_target_mode(value: Any) -> str:
+    """Return the selected aquarium target mode."""
+    mode = str(value).strip()
+    if mode not in {TARGET_MODE_LABORATORY, TARGET_MODE_CUSTOM}:
+        raise ValueError("Unsupported target mode.")
+    return mode
+
+
+def _optional_number(value: Any) -> float | None:
+    """Normalize one optional number-selector value."""
+    if value is None or value == "":
+        return None
+    return float(value)
+
+
+def _normalize_custom_targets(
+    user_input: dict[str, Any],
+) -> dict[str, dict[str, float]]:
+    """Validate optional personal target ranges for the four core parameters."""
+    targets: dict[str, dict[str, float]] = {}
+
+    for key, (minimum_field, maximum_field) in _CUSTOM_TARGET_FIELDS.items():
+        minimum = _optional_number(user_input.get(minimum_field))
+        maximum = _optional_number(user_input.get(maximum_field))
+
+        if minimum is None and maximum is None:
+            continue
+        if minimum is None or maximum is None:
+            raise ValueError("Both limits are required for a custom target.")
+        if minimum > maximum:
+            raise ValueError("The minimum target must not exceed the maximum.")
+
+        targets[key] = {
+            "min": float(minimum),
+            "max": float(maximum),
+        }
+
+    return targets
+
+
+def _custom_target_suggestions(
+    targets: dict[str, Any] | None,
+) -> dict[str, float]:
+    """Return persisted personal ranges in config-flow field form."""
+    suggestions: dict[str, float] = {}
+    for key, (minimum_field, maximum_field) in _CUSTOM_TARGET_FIELDS.items():
+        target = (targets or {}).get(key)
+        if not isinstance(target, dict):
+            continue
+        minimum = target.get("min")
+        maximum = target.get("max")
+        if isinstance(minimum, (int, float)) and isinstance(maximum, (int, float)):
+            suggestions[minimum_field] = float(minimum)
+            suggestions[maximum_field] = float(maximum)
+    return suggestions
+
+
+def _apply_custom_targets_to_report(
+    report: dict[str, Any],
+    custom_targets: dict[str, dict[str, float]],
+) -> dict[str, Any]:
+    """Apply personal targets while preserving the laboratory target and status."""
+    updated = copy.deepcopy(report)
+    measurements = updated.get("measurements", [])
+
+    for measurement in measurements:
+        if not isinstance(measurement, dict):
+            continue
+
+        key = str(measurement.get("key") or "")
+        target = custom_targets.get(key)
+        has_laboratory_target = "laboratory_target" in measurement
+
+        # Personal aquarium targets never apply to RO / osmosis-water checks.
+        if measurement.get("category") == "osmosis":
+            if has_laboratory_target:
+                measurement["target"] = copy.deepcopy(
+                    measurement.get("laboratory_target")
+                )
+            measurement.pop("custom_target", None)
+            measurement.pop("custom_target_source", None)
+            measurement.pop("target_source", None)
+            continue
+
+        if target is None:
+            if has_laboratory_target:
+                measurement["target"] = copy.deepcopy(
+                    measurement.get("laboratory_target")
+                )
+            measurement.pop("custom_target", None)
+            measurement.pop("custom_target_source", None)
+            measurement.pop("target_source", None)
+            continue
+
+        # Preserve the untouched provider target only when a personal target is
+        # actually enabled for this analyte. This keeps default/laboratory-mode
+        # reports compact and makes switching back fully reversible.
+        if not has_laboratory_target:
+            measurement["laboratory_target"] = copy.deepcopy(
+                measurement.get("target")
+            )
+
+        personal_target = {
+            "type": "range",
+            "min": float(target["min"]),
+            "max": float(target["max"]),
+        }
+        measurement["custom_target"] = copy.deepcopy(personal_target)
+        measurement["custom_target_source"] = "aquarium"
+        measurement["target"] = personal_target
+        measurement["target_source"] = "aquarium_custom"
+
+        # Important: measurement["status"] is deliberately NOT changed. It
+        # remains the laboratory's original assessment. Reef ICP calculations
+        # that use target distance now see the personal target, while the lab
+        # status and lab target remain separately available.
+
+    return updated
+
+def _apply_custom_targets_to_reports(
+    reports: list[dict[str, Any]],
+    custom_targets: dict[str, dict[str, float]],
+) -> list[dict[str, Any]]:
+    """Attach the aquarium target configuration to every stored report."""
+    return [
+        _apply_custom_targets_to_report(report, custom_targets)
+        for report in reports
+    ]
+
+
 def _supply_system_options(hass: HomeAssistant) -> list[SelectOptionDict]:
     """Return localized preset labels while still allowing custom systems."""
     is_german = str(hass.config.language or "").lower().startswith("de")
@@ -246,6 +398,85 @@ def _volume_selector() -> NumberSelector:
             unit_of_measurement="L",
             mode=NumberSelectorMode.BOX,
         )
+    )
+
+
+def _target_mode_selector(hass: HomeAssistant) -> SelectSelector:
+    """Return the aquarium target-source selector."""
+    is_german = str(hass.config.language or "").lower().startswith("de")
+    return SelectSelector(
+        SelectSelectorConfig(
+            options=[
+                SelectOptionDict(
+                    value=TARGET_MODE_LABORATORY,
+                    label=(
+                        "Sollbereiche aus der jeweiligen ICP verwenden"
+                        if is_german
+                        else "Use target ranges from each ICP report"
+                    ),
+                ),
+                SelectOptionDict(
+                    value=TARGET_MODE_CUSTOM,
+                    label=(
+                        "Eigene Zielbereiche verwenden"
+                        if is_german
+                        else "Use personal aquarium target ranges"
+                    ),
+                ),
+            ],
+            mode=SelectSelectorMode.DROPDOWN,
+        )
+    )
+
+
+def _target_number_selector(
+    *,
+    minimum: float,
+    maximum: float,
+    step: float,
+    unit: str,
+) -> NumberSelector:
+    """Return one optional personal target limit selector."""
+    return NumberSelector(
+        NumberSelectorConfig(
+            min=minimum,
+            max=maximum,
+            step=step,
+            unit_of_measurement=unit,
+            mode=NumberSelectorMode.BOX,
+        )
+    )
+
+
+def _custom_targets_schema() -> probatio.Schema:
+    """Return optional min/max fields for the four aquarium target parameters."""
+    return probatio.Schema(
+        {
+            probatio.Optional(CONF_TARGET_SALINITY_MIN): _target_number_selector(
+                minimum=0, maximum=50, step=0.01, unit="psu"
+            ),
+            probatio.Optional(CONF_TARGET_SALINITY_MAX): _target_number_selector(
+                minimum=0, maximum=50, step=0.01, unit="psu"
+            ),
+            probatio.Optional(CONF_TARGET_ALKALINITY_MIN): _target_number_selector(
+                minimum=0, maximum=30, step=0.1, unit="dKH"
+            ),
+            probatio.Optional(CONF_TARGET_ALKALINITY_MAX): _target_number_selector(
+                minimum=0, maximum=30, step=0.1, unit="dKH"
+            ),
+            probatio.Optional(CONF_TARGET_CALCIUM_MIN): _target_number_selector(
+                minimum=0, maximum=1000, step=1, unit="mg/l"
+            ),
+            probatio.Optional(CONF_TARGET_CALCIUM_MAX): _target_number_selector(
+                minimum=0, maximum=1000, step=1, unit="mg/l"
+            ),
+            probatio.Optional(CONF_TARGET_MAGNESIUM_MIN): _target_number_selector(
+                minimum=0, maximum=3000, step=1, unit="mg/l"
+            ),
+            probatio.Optional(CONF_TARGET_MAGNESIUM_MAX): _target_number_selector(
+                minimum=0, maximum=3000, step=1, unit="mg/l"
+            ),
+        }
     )
 
 
@@ -485,6 +716,8 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
     _pending_aquarium_volume_l: float | None = None
     _pending_stocking_profile: str | None = None
     _pending_supply_system: str | None = None
+    _pending_target_mode: str | None = None
+    _pending_custom_targets: dict[str, dict[str, float]] | None = None
 
     @staticmethod
     @callback
@@ -514,6 +747,8 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
         self._pending_aquarium_volume_l = None
         self._pending_stocking_profile = None
         self._pending_supply_system = None
+        self._pending_target_mode = None
+        self._pending_custom_targets = None
 
     async def _prepare_pdf_from_input(
         self,
@@ -555,6 +790,9 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                 supply_system = _normalize_supply_system(
                     user_input[CONF_SUPPLY_SYSTEM]
                 )
+                target_mode = _normalize_target_mode(
+                    user_input[CONF_TARGET_MODE]
+                )
                 if not aquarium_name:
                     raise ValueError("Aquarium name must not be empty.")
             except (TypeError, ValueError):
@@ -580,6 +818,10 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                     self._pending_aquarium_volume_l = aquarium_volume_l
                     self._pending_stocking_profile = stocking_profile
                     self._pending_supply_system = supply_system
+                    self._pending_target_mode = target_mode
+                    self._pending_custom_targets = {}
+                    if target_mode == TARGET_MODE_CUSTOM:
+                        return await self.async_step_custom_targets()
                     return await self.async_step_confirm_provider()
 
         schema = probatio.Schema(
@@ -594,6 +836,9 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                 probatio.Required(CONF_SUPPLY_SYSTEM): _supply_system_selector(
                     self.hass
                 ),
+                probatio.Required(CONF_TARGET_MODE): _target_mode_selector(
+                    self.hass
+                ),
                 probatio.Required(CONF_PDF_FILE): FileSelector(
                     FileSelectorConfig(accept=".pdf,application/pdf")
                 ),
@@ -602,7 +847,40 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=self.add_suggested_values_to_schema(schema, user_input),
+            data_schema=self.add_suggested_values_to_schema(
+                schema,
+                user_input or {CONF_TARGET_MODE: TARGET_MODE_LABORATORY},
+            ),
+            errors=errors,
+        )
+
+    async def async_step_custom_targets(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Collect optional personal targets during initial aquarium setup."""
+        if (
+            self._pending_pdf_path is None
+            or self._pending_aquarium_name is None
+            or self._pending_target_mode != TARGET_MODE_CUSTOM
+        ):
+            return await self.async_step_user()
+
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                self._pending_custom_targets = _normalize_custom_targets(user_input)
+            except (TypeError, ValueError):
+                errors["base"] = "invalid_custom_targets"
+            else:
+                return await self.async_step_confirm_provider()
+
+        suggested = _custom_target_suggestions(self._pending_custom_targets)
+        return self.async_show_form(
+            step_id="custom_targets",
+            data_schema=self.add_suggested_values_to_schema(
+                _custom_targets_schema(),
+                user_input or suggested,
+            ),
             errors=errors,
         )
 
@@ -784,7 +1062,11 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                 aquarium_volume_l = self._pending_aquarium_volume_l
                 stocking_profile = self._pending_stocking_profile
                 supply_system = self._pending_supply_system
-                stored_reports = list(reports)
+                custom_targets = dict(self._pending_custom_targets or {})
+                stored_reports = _apply_custom_targets_to_reports(
+                    list(reports),
+                    custom_targets,
+                )
                 self._clear_pending_setup()
                 return self.async_create_entry(
                     title=aquarium_name,
@@ -794,6 +1076,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_AQUARIUM_VOLUME_L: aquarium_volume_l,
                         CONF_STOCKING_PROFILE: stocking_profile,
                         CONF_SUPPLY_SYSTEM: supply_system,
+                        CONF_CUSTOM_TARGETS: custom_targets,
                     },
                 )
 
@@ -820,6 +1103,7 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
     _pending_provider: str | None = None
     _pending_report: dict[str, Any] | None = None
     _pending_reports: list[dict[str, Any]] | None = None
+    _pending_aquarium_settings: dict[str, Any] | None = None
 
     def _batch_reports(self) -> list[dict[str, Any]]:
         """Return this options flow's pending report batch."""
@@ -860,6 +1144,10 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
             for report in imported_reports
         )
         reports = _merge_reports(existing_reports, imported_reports)
+        custom_targets = self.config_entry.options.get(CONF_CUSTOM_TARGETS, {})
+        if not isinstance(custom_targets, dict):
+            custom_targets = {}
+        reports = _apply_custom_targets_to_reports(reports, custom_targets)
         if replacing_existing:
             async_request_statistics_rebuild(
                 self.hass,
@@ -1016,7 +1304,7 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
     async def async_step_aquarium_settings(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Edit net aquarium volume, stocking profile and supply system."""
+        """Edit persistent aquarium settings and personal target mode."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -1030,14 +1318,33 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
                 supply_system = _normalize_supply_system(
                     user_input[CONF_SUPPLY_SYSTEM]
                 )
+                target_mode = _normalize_target_mode(
+                    user_input[CONF_TARGET_MODE]
+                )
             except (TypeError, ValueError):
                 errors["base"] = "invalid_aquarium_profile"
             else:
+                self._pending_aquarium_settings = {
+                    CONF_AQUARIUM_VOLUME_L: aquarium_volume_l,
+                    CONF_STOCKING_PROFILE: stocking_profile,
+                    CONF_SUPPLY_SYSTEM: supply_system,
+                }
+                if target_mode == TARGET_MODE_CUSTOM:
+                    return await self.async_step_custom_targets()
+
                 options = dict(self.config_entry.options)
-                options[CONF_AQUARIUM_VOLUME_L] = aquarium_volume_l
-                options[CONF_STOCKING_PROFILE] = stocking_profile
-                options[CONF_SUPPLY_SYSTEM] = supply_system
+                options.update(self._pending_aquarium_settings)
+                options[CONF_CUSTOM_TARGETS] = {}
+                options[CONF_REPORTS] = _apply_custom_targets_to_reports(
+                    list(options.get(CONF_REPORTS, [])),
+                    {},
+                )
+                self._pending_aquarium_settings = None
                 return self.async_create_entry(title="", data=options)
+
+        current_targets = self.config_entry.options.get(CONF_CUSTOM_TARGETS, {})
+        if not isinstance(current_targets, dict):
+            current_targets = {}
 
         suggested: dict[str, Any] = {
             CONF_STOCKING_PROFILE: self.config_entry.options.get(
@@ -1047,6 +1354,9 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
             CONF_SUPPLY_SYSTEM: self.config_entry.options.get(
                 CONF_SUPPLY_SYSTEM,
                 SUPPLY_SYSTEM_NONE,
+            ),
+            CONF_TARGET_MODE: (
+                TARGET_MODE_CUSTOM if current_targets else TARGET_MODE_LABORATORY
             ),
         }
         if volume := self.config_entry.options.get(CONF_AQUARIUM_VOLUME_L):
@@ -1061,12 +1371,53 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
                 probatio.Required(CONF_SUPPLY_SYSTEM): _supply_system_selector(
                     self.hass
                 ),
+                probatio.Required(CONF_TARGET_MODE): _target_mode_selector(
+                    self.hass
+                ),
             }
         )
         return self.async_show_form(
             step_id="aquarium_settings",
             data_schema=self.add_suggested_values_to_schema(
                 schema,
+                user_input or suggested,
+            ),
+            errors=errors,
+        )
+
+    async def async_step_custom_targets(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Edit optional personal Salinity/KH/Ca/Mg target ranges."""
+        if self._pending_aquarium_settings is None:
+            return await self.async_step_aquarium_settings()
+
+        errors: dict[str, str] = {}
+        current_targets = self.config_entry.options.get(CONF_CUSTOM_TARGETS, {})
+        if not isinstance(current_targets, dict):
+            current_targets = {}
+
+        if user_input is not None:
+            try:
+                custom_targets = _normalize_custom_targets(user_input)
+            except (TypeError, ValueError):
+                errors["base"] = "invalid_custom_targets"
+            else:
+                options = dict(self.config_entry.options)
+                options.update(self._pending_aquarium_settings)
+                options[CONF_CUSTOM_TARGETS] = custom_targets
+                options[CONF_REPORTS] = _apply_custom_targets_to_reports(
+                    list(options.get(CONF_REPORTS, [])),
+                    custom_targets,
+                )
+                self._pending_aquarium_settings = None
+                return self.async_create_entry(title="", data=options)
+
+        suggested = _custom_target_suggestions(current_targets)
+        return self.async_show_form(
+            step_id="custom_targets",
+            data_schema=self.add_suggested_values_to_schema(
+                _custom_targets_schema(),
                 user_input or suggested,
             ),
             errors=errors,

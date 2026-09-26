@@ -6,6 +6,7 @@ CONF_AQUARIUM_NAME = "aquarium_name"
 CONF_AQUARIUM_VOLUME_L = "aquarium_volume_l"
 CONF_SUPPLY_SYSTEM = "supply_system"
 CONF_STOCKING_PROFILE = "stocking_profile"
+CONF_CUSTOM_TARGETS = "custom_targets"
 CONF_REPORTS = "reports"
 
 SUPPLY_SYSTEM_NONE = "none"
@@ -21,7 +22,6 @@ SUPPLY_SYSTEM_NAMES = {
     SUPPLY_SYSTEM_TRITON_METHOD: "TRITON Method",
     SUPPLY_SYSTEM_OCEAMO_DUO: "Oceamo DUO",
 }
-
 
 STOCKING_PROFILE_MIXED_REEF = "mixed_reef"
 STOCKING_PROFILE_SPS_DOMINANT = "sps_dominant"

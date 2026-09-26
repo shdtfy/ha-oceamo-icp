@@ -3,13 +3,14 @@
     "step": {
       "user": {
         "title": "Reef ICP",
-        "description": "Create an aquarium profile with net water volume, stocking profile and dosing system, then upload the first ICP PDF. After confirming it, you can add more existing ICP reports before the aquarium is created. Reef ICP detects the laboratory automatically and asks you to confirm it before import.",
+        "description": "Create an aquarium profile with net water volume, stocking profile, dosing system and target-source mode, then upload the first ICP PDF. You can keep the target ranges from each laboratory report or define personal aquarium ranges for salinity, alkalinity, calcium and magnesium. After confirming the first report, more existing ICP reports can be added before the aquarium is created.",
         "data": {
           "aquarium_name": "Aquarium name",
           "aquarium_volume_l": "Net water volume",
           "stocking_profile": "Stocking profile",
           "supply_system": "Dosing / supply system",
-          "pdf_file": "ICP PDF report"
+          "pdf_file": "ICP PDF report",
+          "target_mode": "Target ranges"
         }
       },
       "add_icp": {
@@ -39,6 +40,20 @@
         "data": {
           "provider": "ICP provider"
         }
+      },
+      "custom_targets": {
+        "title": "Personal aquarium target ranges",
+        "description": "Set optional personal target ranges for salinity, alkalinity, calcium and magnesium. For each parameter, enter both minimum and maximum. Leave both fields empty to keep using the target from each ICP laboratory for that parameter. Laboratory target ranges and laboratory status remain preserved.",
+        "data": {
+          "target_salinity_min": "Salinity minimum",
+          "target_salinity_max": "Salinity maximum",
+          "target_alkalinity_min": "Alkalinity minimum",
+          "target_alkalinity_max": "Alkalinity maximum",
+          "target_calcium_min": "Calcium minimum",
+          "target_calcium_max": "Calcium maximum",
+          "target_magnesium_min": "Magnesium minimum",
+          "target_magnesium_max": "Magnesium maximum"
+        }
       }
     },
     "error": {
@@ -47,7 +62,8 @@
       "invalid_analysis_date": "Please select a valid analysis date.",
       "unknown": "An unexpected error occurred while reading the PDF.",
       "invalid_aquarium_profile": "Enter a valid aquarium name, a net water volume greater than 0 L, a stocking profile and a dosing system.",
-      "provider_mismatch": "The PDF does not match the selected ICP provider. Choose the automatically detected provider or another matching laboratory."
+      "provider_mismatch": "The PDF does not match the selected ICP provider. Choose the automatically detected provider or another matching laboratory.",
+      "invalid_custom_targets": "For every personal target, enter both minimum and maximum and make sure the minimum does not exceed the maximum."
     }
   },
   "options": {
@@ -82,11 +98,12 @@
       },
       "aquarium_settings": {
         "title": "Aquarium settings",
-        "description": "Set the aquarium's net water volume, stocking profile and permanent dosing/supply system. These settings are independent of the laboratory that performs an ICP.",
+        "description": "Set the aquarium's net water volume, stocking profile, permanent dosing/supply system and target-source mode. Personal target ranges remain independent of the laboratory performing an ICP.",
         "data": {
           "aquarium_volume_l": "Net water volume",
           "stocking_profile": "Stocking profile",
-          "supply_system": "Dosing / supply system"
+          "supply_system": "Dosing / supply system",
+          "target_mode": "Target ranges"
         }
       },
       "confirm_provider": {
@@ -94,6 +111,20 @@
         "description": "Automatically detected: {detected_provider}\n\nReport type: {report_type}\nAnalysis ID: {analysis_number}\nAnalysis date: {analysis_date}\n\nConfirm the provider or select another supported laboratory. Reef ICP validates the PDF with the selected provider parser before adding it to the import batch.",
         "data": {
           "provider": "ICP provider"
+        }
+      },
+      "custom_targets": {
+        "title": "Personal aquarium target ranges",
+        "description": "Set optional personal target ranges for salinity, alkalinity, calcium and magnesium. For each parameter, enter both minimum and maximum. Leave both fields empty to keep using the target from each ICP laboratory for that parameter. Laboratory target ranges and laboratory status remain preserved.",
+        "data": {
+          "target_salinity_min": "Salinity minimum",
+          "target_salinity_max": "Salinity maximum",
+          "target_alkalinity_min": "Alkalinity minimum",
+          "target_alkalinity_max": "Alkalinity maximum",
+          "target_calcium_min": "Calcium minimum",
+          "target_calcium_max": "Calcium maximum",
+          "target_magnesium_min": "Magnesium minimum",
+          "target_magnesium_max": "Magnesium maximum"
         }
       }
     },
@@ -103,7 +134,8 @@
       "invalid_analysis_date": "Please select a valid analysis date.",
       "unknown": "An unexpected error occurred while reading the PDF.",
       "invalid_aquarium_profile": "Enter a net water volume greater than 0 L, a stocking profile and a dosing system.",
-      "provider_mismatch": "The PDF does not match the selected ICP provider. Choose the automatically detected provider or another matching laboratory."
+      "provider_mismatch": "The PDF does not match the selected ICP provider. Choose the automatically detected provider or another matching laboratory.",
+      "invalid_custom_targets": "For every personal target, enter both minimum and maximum and make sure the minimum does not exceed the maximum."
     }
   }
 }

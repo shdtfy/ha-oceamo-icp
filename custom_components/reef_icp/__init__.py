@@ -21,10 +21,16 @@ from .statistics import (
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
-CARD_VERSION = "0.13.1"
+CARD_VERSION = "0.13.5"
 CARD_URL = "/reef_icp/reef-icp-card.js"
 CARD_RESOURCE_URL = f"{CARD_URL}?v={CARD_VERSION}"
 CARD_FILE = Path(__file__).parent / "www" / "reef-icp-card.js"
+
+CARD_TARGET_PATCH_URL = "/reef_icp/reef-icp-card-targets.js"
+CARD_TARGET_PATCH_RESOURCE_URL = f"{CARD_TARGET_PATCH_URL}?v={CARD_VERSION}"
+CARD_TARGET_PATCH_FILE = (
+    Path(__file__).parent / "www" / "reef-icp-card-targets.js"
+)
 
 
 async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
@@ -66,18 +72,24 @@ async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the Reef ICP integration and bundled dashboard card."""
+    """Set up Reef ICP from YAML / frontend resources."""
     await hass.http.async_register_static_paths(
         [
             StaticPathConfig(
                 url_path=CARD_URL,
                 path=str(CARD_FILE),
                 cache_headers=False,
-            )
+            ),
+            StaticPathConfig(
+                url_path=CARD_TARGET_PATCH_URL,
+                path=str(CARD_TARGET_PATCH_FILE),
+                cache_headers=False,
+            ),
         ]
     )
 
     add_extra_js_url(hass, CARD_RESOURCE_URL)
+    add_extra_js_url(hass, CARD_TARGET_PATCH_RESOURCE_URL)
     await _async_register_lovelace_resource(hass)
 
     return True
@@ -97,5 +109,5 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a Reef ICP config entry."""
+    """Unload Reef ICP config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
