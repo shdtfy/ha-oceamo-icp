@@ -40,18 +40,15 @@ from .const import (
     CONF_AQUARIUM_NAME,
     CONF_AQUARIUM_VOLUME_L,
     CONF_CUSTOM_TARGETS,
+    CONF_REEF_METHOD,
     CONF_REPORTS,
     CONF_STOCKING_PROFILE,
     CONF_SUPPLY_SYSTEM,
     DOMAIN,
     MAX_STORED_REPORTS,
     PROVIDER_OCEAMO,
-    SUPPLY_SYSTEM_ATI_ESSENTIALS_PRO,
-    SUPPLY_SYSTEM_FAUNA_MARIN_BALLING_LIGHT,
-    SUPPLY_SYSTEM_NONE,
-    SUPPLY_SYSTEM_OCEAMO_DUO,
-    SUPPLY_SYSTEM_TRITON_METHOD,
-    SUPPLY_SYSTEM_TROPIC_MARIN_ORIGINAL_BALLING,
+    REEF_METHOD_NAMES,
+    REEF_METHOD_NONE,
     STOCKING_PROFILE_FISH_ONLY,
     STOCKING_PROFILE_LPS_DOMINANT,
     STOCKING_PROFILE_MIXED_REEF,
@@ -59,6 +56,8 @@ from .const import (
     STOCKING_PROFILE_OTHER,
     STOCKING_PROFILE_SOFT_CORAL_DOMINANT,
     STOCKING_PROFILE_SPS_DOMINANT,
+    SUPPLY_SYSTEM_NAMES,
+    SUPPLY_SYSTEM_NONE,
 )
 from .parser import (
     IcpParseError,
@@ -103,22 +102,17 @@ _CUSTOM_TARGET_FIELDS: dict[str, tuple[str, str]] = {
 
 def _cleanup_pending_pdf(pending_pdf_path: str | None) -> None:
     """Remove a preserved temporary PDF and its private temp directory."""
-    if not pending_pdf_path:
-        return
-    shutil.rmtree(Path(pending_pdf_path).parent, ignore_errors=True)
+    if pending_pdf_path:
+        shutil.rmtree(Path(pending_pdf_path).parent, ignore_errors=True)
 
 
-def _copy_uploaded_pdf(
-    hass: HomeAssistant,
-    uploaded_file_id: str,
-) -> Path:
+def _copy_uploaded_pdf(hass: HomeAssistant, uploaded_file_id: str) -> Path:
     """Preserve an uploaded PDF after Home Assistant removes the upload temp dir."""
     temp_dir = Path(tempfile.mkdtemp(prefix="reef_icp_"))
     try:
         with process_uploaded_file(hass, uploaded_file_id) as file_path:
             source_path = Path(file_path)
-            filename = source_path.name or "icp-report.pdf"
-            preserved_path = temp_dir / filename
+            preserved_path = temp_dir / (source_path.name or "icp-report.pdf")
             shutil.copy2(source_path, preserved_path)
         return preserved_path
     except Exception:
@@ -132,7 +126,6 @@ def _prepare_uploaded_pdf(
 ) -> tuple[str, str, dict[str, Any] | None]:
     """Preserve an upload, detect its provider and build a best-effort preview."""
     preserved_path = _copy_uploaded_pdf(hass, uploaded_file_id)
-
     try:
         provider = detect_icp_provider(preserved_path)
     except Exception:
@@ -141,15 +134,11 @@ def _prepare_uploaded_pdf(
 
     try:
         report = parse_icp_pdf_for_provider(preserved_path, provider)
-    except MissingAnalysisDateError:
-        report = None
-    except IcpParseError:
-        # Keep the file so the detected provider can be overridden manually.
+    except (MissingAnalysisDateError, IcpParseError):
         report = None
     except Exception:
         _cleanup_pending_pdf(str(preserved_path))
         raise
-
     return str(preserved_path), provider, report
 
 
@@ -164,7 +153,6 @@ def _normalize_selected_date(value: Any) -> str:
 
 
 def _normalize_aquarium_volume(value: Any) -> float:
-    """Return a positive aquarium net volume in liters."""
     volume = float(value)
     if volume <= 0:
         raise ValueError("Aquarium volume must be greater than zero.")
@@ -172,15 +160,20 @@ def _normalize_aquarium_volume(value: Any) -> float:
 
 
 def _normalize_supply_system(value: Any) -> str:
-    """Return a non-empty supply-system identifier or custom name."""
     system = str(value).strip()
     if not system:
         raise ValueError("Supply system must not be empty.")
     return system
 
 
+def _normalize_reef_method(value: Any) -> str:
+    method = str(value).strip()
+    if method not in REEF_METHOD_NAMES:
+        raise ValueError("Unsupported reef method.")
+    return method
+
+
 def _normalize_stocking_profile(value: Any) -> str:
-    """Return a supported aquarium stocking-profile identifier."""
     profile = str(value).strip()
     if profile not in STOCKING_PROFILE_NAMES:
         raise ValueError("Unsupported stocking profile.")
@@ -188,7 +181,6 @@ def _normalize_stocking_profile(value: Any) -> str:
 
 
 def _normalize_target_mode(value: Any) -> str:
-    """Return the selected aquarium target mode."""
     mode = str(value).strip()
     if mode not in {TARGET_MODE_LABORATORY, TARGET_MODE_CUSTOM}:
         raise ValueError("Unsupported target mode.")
@@ -196,41 +188,28 @@ def _normalize_target_mode(value: Any) -> str:
 
 
 def _optional_number(value: Any) -> float | None:
-    """Normalize one optional number-selector value."""
     if value is None or value == "":
         return None
     return float(value)
 
 
-def _normalize_custom_targets(
-    user_input: dict[str, Any],
-) -> dict[str, dict[str, float]]:
+def _normalize_custom_targets(user_input: dict[str, Any]) -> dict[str, dict[str, float]]:
     """Validate optional personal target ranges for the four core parameters."""
     targets: dict[str, dict[str, float]] = {}
-
     for key, (minimum_field, maximum_field) in _CUSTOM_TARGET_FIELDS.items():
         minimum = _optional_number(user_input.get(minimum_field))
         maximum = _optional_number(user_input.get(maximum_field))
-
         if minimum is None and maximum is None:
             continue
         if minimum is None or maximum is None:
             raise ValueError("Both limits are required for a custom target.")
         if minimum > maximum:
             raise ValueError("The minimum target must not exceed the maximum.")
-
-        targets[key] = {
-            "min": float(minimum),
-            "max": float(maximum),
-        }
-
+        targets[key] = {"min": float(minimum), "max": float(maximum)}
     return targets
 
 
-def _custom_target_suggestions(
-    targets: dict[str, Any] | None,
-) -> dict[str, float]:
-    """Return persisted personal ranges in config-flow field form."""
+def _custom_target_suggestions(targets: dict[str, Any] | None) -> dict[str, float]:
     suggestions: dict[str, float] = {}
     for key, (minimum_field, maximum_field) in _CUSTOM_TARGET_FIELDS.items():
         target = (targets or {}).get(key)
@@ -250,45 +229,23 @@ def _apply_custom_targets_to_report(
 ) -> dict[str, Any]:
     """Apply personal targets while preserving the laboratory target and status."""
     updated = copy.deepcopy(report)
-    measurements = updated.get("measurements", [])
-
-    for measurement in measurements:
+    for measurement in updated.get("measurements", []):
         if not isinstance(measurement, dict):
             continue
-
         key = str(measurement.get("key") or "")
         target = custom_targets.get(key)
         has_laboratory_target = "laboratory_target" in measurement
 
-        # Personal aquarium targets never apply to RO / osmosis-water checks.
-        if measurement.get("category") == "osmosis":
+        if measurement.get("category") == "osmosis" or target is None:
             if has_laboratory_target:
-                measurement["target"] = copy.deepcopy(
-                    measurement.get("laboratory_target")
-                )
+                measurement["target"] = copy.deepcopy(measurement.get("laboratory_target"))
             measurement.pop("custom_target", None)
             measurement.pop("custom_target_source", None)
             measurement.pop("target_source", None)
             continue
 
-        if target is None:
-            if has_laboratory_target:
-                measurement["target"] = copy.deepcopy(
-                    measurement.get("laboratory_target")
-                )
-            measurement.pop("custom_target", None)
-            measurement.pop("custom_target_source", None)
-            measurement.pop("target_source", None)
-            continue
-
-        # Preserve the untouched provider target only when a personal target is
-        # actually enabled for this analyte. This keeps default/laboratory-mode
-        # reports compact and makes switching back fully reversible.
         if not has_laboratory_target:
-            measurement["laboratory_target"] = copy.deepcopy(
-                measurement.get("target")
-            )
-
+            measurement["laboratory_target"] = copy.deepcopy(measurement.get("target"))
         personal_target = {
             "type": "range",
             "min": float(target["min"]),
@@ -298,79 +255,57 @@ def _apply_custom_targets_to_report(
         measurement["custom_target_source"] = "aquarium"
         measurement["target"] = personal_target
         measurement["target_source"] = "aquarium_custom"
-
-        # Important: measurement["status"] is deliberately NOT changed. It
-        # remains the laboratory's original assessment. Reef ICP calculations
-        # that use target distance now see the personal target, while the lab
-        # status and lab target remain separately available.
-
     return updated
+
 
 def _apply_custom_targets_to_reports(
     reports: list[dict[str, Any]],
     custom_targets: dict[str, dict[str, float]],
 ) -> list[dict[str, Any]]:
-    """Attach the aquarium target configuration to every stored report."""
-    return [
-        _apply_custom_targets_to_report(report, custom_targets)
-        for report in reports
-    ]
+    return [_apply_custom_targets_to_report(report, custom_targets) for report in reports]
 
 
 def _supply_system_options(
     hass: HomeAssistant,
     current_value: str | None = None,
 ) -> list[SelectOptionDict]:
-    """Return localized preset labels plus an explicit custom-system choice."""
+    """Return all built-in systems plus an explicit custom-system choice."""
     is_german = str(hass.config.language or "").lower().startswith("de")
-    no_system = (
-        "Kein Versorgungssystem / nur Analyse"
-        if is_german
-        else "No dosing system / analysis only"
-    )
-    custom_label = (
-        "Sonstiges / benutzerdefiniert"
-        if is_german
-        else "Other / custom"
-    )
-    options = [
-        SelectOptionDict(value=SUPPLY_SYSTEM_NONE, label=no_system),
-        SelectOptionDict(
-            value=SUPPLY_SYSTEM_FAUNA_MARIN_BALLING_LIGHT,
-            label="Fauna Marin Balling Light",
-        ),
-        SelectOptionDict(
-            value=SUPPLY_SYSTEM_ATI_ESSENTIALS_PRO,
-            label="ATI Essentials pro",
-        ),
-        SelectOptionDict(
-            value=SUPPLY_SYSTEM_TRITON_METHOD,
-            label="TRITON Method",
-        ),
-        SelectOptionDict(
-            value=SUPPLY_SYSTEM_OCEAMO_DUO,
-            label="Oceamo DUO",
-        ),
-        SelectOptionDict(
-            value=SUPPLY_SYSTEM_TROPIC_MARIN_ORIGINAL_BALLING,
-            label="Tropic Marin Original Balling",
-        ),
-    ]
+    options: list[SelectOptionDict] = []
+    for value, label in SUPPLY_SYSTEM_NAMES.items():
+        if value == SUPPLY_SYSTEM_NONE:
+            label = (
+                "Kein Versorgungssystem / nur Analyse"
+                if is_german
+                else "No dosing system / analysis only"
+            )
+        options.append(SelectOptionDict(value=value, label=label))
 
     preset_values = {str(option["value"]) for option in options}
-    if (
-        current_value
-        and current_value not in preset_values
-        and current_value != SUPPLY_SYSTEM_CUSTOM
-    ):
+    if current_value and current_value not in preset_values and current_value != SUPPLY_SYSTEM_CUSTOM:
         options.append(SelectOptionDict(value=current_value, label=current_value))
 
-    options.append(SelectOptionDict(value=SUPPLY_SYSTEM_CUSTOM, label=custom_label))
+    options.append(
+        SelectOptionDict(
+            value=SUPPLY_SYSTEM_CUSTOM,
+            label=("Sonstiges / benutzerdefiniert" if is_german else "Other / custom"),
+        )
+    )
+    return options
+
+
+def _reef_method_options(hass: HomeAssistant) -> list[SelectOptionDict]:
+    """Return the independent reef/nutrient-method choices."""
+    is_german = str(hass.config.language or "").lower().startswith("de")
+    options: list[SelectOptionDict] = []
+    for value, label in REEF_METHOD_NAMES.items():
+        if value == REEF_METHOD_NONE:
+            label = "Keine / Standard-Riff" if is_german else "None / standard reef"
+        options.append(SelectOptionDict(value=value, label=label))
     return options
 
 
 def _stocking_profile_options(hass: HomeAssistant) -> list[SelectOptionDict]:
-    """Return localized aquarium stocking-profile presets."""
     is_german = str(hass.config.language or "").lower().startswith("de")
     labels = (
         {
@@ -391,44 +326,34 @@ def _stocking_profile_options(hass: HomeAssistant) -> list[SelectOptionDict]:
             STOCKING_PROFILE_OTHER: "Other / custom",
         }
     )
-    return [
-        SelectOptionDict(value=value, label=labels[value])
-        for value in (
-            STOCKING_PROFILE_MIXED_REEF,
-            STOCKING_PROFILE_SPS_DOMINANT,
-            STOCKING_PROFILE_LPS_DOMINANT,
-            STOCKING_PROFILE_SOFT_CORAL_DOMINANT,
-            STOCKING_PROFILE_FISH_ONLY,
-            STOCKING_PROFILE_OTHER,
-        )
-    ]
+    return [SelectOptionDict(value=value, label=labels[value]) for value in labels]
 
 
 def _stocking_profile_selector(hass: HomeAssistant) -> SelectSelector:
-    """Return the persistent aquarium stocking-profile selector."""
     return SelectSelector(
-        SelectSelectorConfig(
-            options=_stocking_profile_options(hass),
-            mode=SelectSelectorMode.DROPDOWN,
-        )
+        SelectSelectorConfig(options=_stocking_profile_options(hass), mode=SelectSelectorMode.DROPDOWN)
+    )
+
+
+def _supply_system_selector(hass: HomeAssistant, current_value: str | None = None) -> SelectSelector:
+    return SelectSelector(
+        SelectSelectorConfig(options=_supply_system_options(hass, current_value), mode=SelectSelectorMode.DROPDOWN)
+    )
+
+
+def _reef_method_selector(hass: HomeAssistant) -> SelectSelector:
+    return SelectSelector(
+        SelectSelectorConfig(options=_reef_method_options(hass), mode=SelectSelectorMode.DROPDOWN)
     )
 
 
 def _volume_selector() -> NumberSelector:
-    """Return the aquarium net-volume selector."""
     return NumberSelector(
-        NumberSelectorConfig(
-            min=1,
-            max=100000,
-            step=1,
-            unit_of_measurement="L",
-            mode=NumberSelectorMode.BOX,
-        )
+        NumberSelectorConfig(min=1, max=100000, step=1, unit_of_measurement="L", mode=NumberSelectorMode.BOX)
     )
 
 
 def _target_mode_selector(hass: HomeAssistant) -> SelectSelector:
-    """Return the aquarium target-source selector."""
     is_german = str(hass.config.language or "").lower().startswith("de")
     return SelectSelector(
         SelectSelectorConfig(
@@ -443,11 +368,7 @@ def _target_mode_selector(hass: HomeAssistant) -> SelectSelector:
                 ),
                 SelectOptionDict(
                     value=TARGET_MODE_CUSTOM,
-                    label=(
-                        "Eigene Zielbereiche verwenden"
-                        if is_german
-                        else "Use personal aquarium target ranges"
-                    ),
+                    label=("Eigene Zielbereiche verwenden" if is_german else "Use personal aquarium target ranges"),
                 ),
             ],
             mode=SelectSelectorMode.DROPDOWN,
@@ -455,116 +376,49 @@ def _target_mode_selector(hass: HomeAssistant) -> SelectSelector:
     )
 
 
-def _target_number_selector(
-    *,
-    minimum: float,
-    maximum: float,
-    step: float,
-    unit: str,
-) -> NumberSelector:
-    """Return one optional personal target limit selector."""
+def _target_number_selector(*, minimum: float, maximum: float, step: float, unit: str) -> NumberSelector:
     return NumberSelector(
-        NumberSelectorConfig(
-            min=minimum,
-            max=maximum,
-            step=step,
-            unit_of_measurement=unit,
-            mode=NumberSelectorMode.BOX,
-        )
+        NumberSelectorConfig(min=minimum, max=maximum, step=step, unit_of_measurement=unit, mode=NumberSelectorMode.BOX)
     )
 
 
 def _custom_targets_schema() -> probatio.Schema:
-    """Return optional min/max fields for the four aquarium target parameters."""
     return probatio.Schema(
         {
-            probatio.Optional(CONF_TARGET_SALINITY_MIN): _target_number_selector(
-                minimum=0, maximum=50, step=0.01, unit="psu"
-            ),
-            probatio.Optional(CONF_TARGET_SALINITY_MAX): _target_number_selector(
-                minimum=0, maximum=50, step=0.01, unit="psu"
-            ),
-            probatio.Optional(CONF_TARGET_ALKALINITY_MIN): _target_number_selector(
-                minimum=0, maximum=30, step=0.1, unit="dKH"
-            ),
-            probatio.Optional(CONF_TARGET_ALKALINITY_MAX): _target_number_selector(
-                minimum=0, maximum=30, step=0.1, unit="dKH"
-            ),
-            probatio.Optional(CONF_TARGET_CALCIUM_MIN): _target_number_selector(
-                minimum=0, maximum=1000, step=1, unit="mg/l"
-            ),
-            probatio.Optional(CONF_TARGET_CALCIUM_MAX): _target_number_selector(
-                minimum=0, maximum=1000, step=1, unit="mg/l"
-            ),
-            probatio.Optional(CONF_TARGET_MAGNESIUM_MIN): _target_number_selector(
-                minimum=0, maximum=3000, step=1, unit="mg/l"
-            ),
-            probatio.Optional(CONF_TARGET_MAGNESIUM_MAX): _target_number_selector(
-                minimum=0, maximum=3000, step=1, unit="mg/l"
-            ),
+            probatio.Optional(CONF_TARGET_SALINITY_MIN): _target_number_selector(minimum=0, maximum=50, step=0.01, unit="psu"),
+            probatio.Optional(CONF_TARGET_SALINITY_MAX): _target_number_selector(minimum=0, maximum=50, step=0.01, unit="psu"),
+            probatio.Optional(CONF_TARGET_ALKALINITY_MIN): _target_number_selector(minimum=0, maximum=30, step=0.1, unit="dKH"),
+            probatio.Optional(CONF_TARGET_ALKALINITY_MAX): _target_number_selector(minimum=0, maximum=30, step=0.1, unit="dKH"),
+            probatio.Optional(CONF_TARGET_CALCIUM_MIN): _target_number_selector(minimum=0, maximum=1000, step=1, unit="mg/l"),
+            probatio.Optional(CONF_TARGET_CALCIUM_MAX): _target_number_selector(minimum=0, maximum=1000, step=1, unit="mg/l"),
+            probatio.Optional(CONF_TARGET_MAGNESIUM_MIN): _target_number_selector(minimum=0, maximum=3000, step=1, unit="mg/l"),
+            probatio.Optional(CONF_TARGET_MAGNESIUM_MAX): _target_number_selector(minimum=0, maximum=3000, step=1, unit="mg/l"),
         }
-    )
-
-
-def _supply_system_selector(
-    hass: HomeAssistant,
-    current_value: str | None = None,
-) -> SelectSelector:
-    """Return the persistent supply-system selector."""
-    return SelectSelector(
-        SelectSelectorConfig(
-            options=_supply_system_options(hass, current_value),
-            mode=SelectSelectorMode.DROPDOWN,
-        )
     )
 
 
 def _custom_supply_system_schema() -> probatio.Schema:
-    """Return the text field used for a user-defined supply system."""
     return probatio.Schema(
-        {
-            probatio.Required(CONF_CUSTOM_SUPPLY_SYSTEM): TextSelector(
-                TextSelectorConfig(type=TextSelectorType.TEXT)
-            )
-        }
+        {probatio.Required(CONF_CUSTOM_SUPPLY_SYSTEM): TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT))}
     )
 
 
 def _provider_selector() -> SelectSelector:
-    """Return the supported ICP provider selector used for confirmation."""
     return SelectSelector(
         SelectSelectorConfig(
-            options=[
-                SelectOptionDict(value=provider, label=name)
-                for provider, name in PROVIDER_NAMES.items()
-            ],
+            options=[SelectOptionDict(value=provider, label=name) for provider, name in PROVIDER_NAMES.items()],
             mode=SelectSelectorMode.DROPDOWN,
         )
     )
 
 
 def _batch_action_selector(hass: HomeAssistant) -> SelectSelector:
-    """Return localized actions for continuing or finishing a batch import."""
     is_german = str(hass.config.language or "").lower().startswith("de")
     return SelectSelector(
         SelectSelectorConfig(
             options=[
-                SelectOptionDict(
-                    value=BATCH_ACTION_ADD,
-                    label=(
-                        "Weitere ICP hinzufügen"
-                        if is_german
-                        else "Add another ICP"
-                    ),
-                ),
-                SelectOptionDict(
-                    value=BATCH_ACTION_FINISH,
-                    label=(
-                        "Import abschließen"
-                        if is_german
-                        else "Finish import"
-                    ),
-                ),
+                SelectOptionDict(value=BATCH_ACTION_ADD, label="Weitere ICP hinzufügen" if is_german else "Add another ICP"),
+                SelectOptionDict(value=BATCH_ACTION_FINISH, label="Import abschließen" if is_german else "Finish import"),
             ],
             mode=SelectSelectorMode.DROPDOWN,
         )
@@ -585,160 +439,84 @@ _REPORT_TYPE_LABELS = {
 }
 
 
-def _confirmation_placeholders(
-    detected_provider: str,
-    report: dict[str, Any] | None,
-) -> dict[str, str]:
-    """Return provider/report metadata shown before an import is stored."""
+def _confirmation_placeholders(detected_provider: str, report: dict[str, Any] | None) -> dict[str, str]:
     metadata = report.get("metadata", {}) if report else {}
-    report_type = (
-        report.get("report_type")
-        or metadata.get("report_type")
-        if report
-        else None
-    )
+    report_type = (report.get("report_type") or metadata.get("report_type")) if report else None
     return {
-        "detected_provider": PROVIDER_NAMES.get(
-            detected_provider,
-            detected_provider,
-        ),
-        "report_type": _REPORT_TYPE_LABELS.get(
-            str(report_type),
-            str(report_type),
-        )
-        if report_type
-        else "—",
-        "analysis_number": str(
-            metadata.get("provider_report_id")
-            or metadata.get("analysis_number")
-            or "—"
-        ),
+        "detected_provider": PROVIDER_NAMES.get(detected_provider, detected_provider),
+        "report_type": _REPORT_TYPE_LABELS.get(str(report_type), str(report_type)) if report_type else "—",
+        "analysis_number": str(metadata.get("provider_report_id") or metadata.get("analysis_number") or "—"),
         "analysis_date": str(metadata.get("analysis_date") or "—"),
     }
 
 
-def _parse_pending_pdf_for_provider(
-    pending_pdf_path: str,
-    provider: str,
-) -> dict[str, Any]:
-    """Parse a preserved upload with the provider selected by the user."""
+def _parse_pending_pdf_for_provider(pending_pdf_path: str, provider: str) -> dict[str, Any]:
     source_path = Path(pending_pdf_path)
     if not source_path.exists():
         raise IcpParseError("The preserved uploaded PDF is no longer available.")
     return parse_icp_pdf_for_provider(source_path, provider)
 
 
-def _parse_pending_pdf_with_date(
-    pending_pdf_path: str,
-    provider: str,
-    selected_date: Any,
-) -> dict[str, Any]:
-    """Reparse a preserved report with the confirmed provider and selected date."""
+def _parse_pending_pdf_with_date(pending_pdf_path: str, provider: str, selected_date: Any) -> dict[str, Any]:
     source_path = Path(pending_pdf_path)
     if not source_path.exists():
         raise IcpParseError("The preserved uploaded PDF is no longer available.")
-
-    date_value = _normalize_selected_date(selected_date)
     return parse_icp_pdf_for_provider(
         source_path,
         provider,
-        analysis_date_override=date_value,
+        analysis_date_override=_normalize_selected_date(selected_date),
     )
 
 
 def _report_provider(report: dict[str, Any]) -> str:
-    """Return provider, treating legacy stored reports as Oceamo."""
-    return str(
-        report.get("provider")
-        or report.get("metadata", {}).get("provider")
-        or PROVIDER_OCEAMO
-    )
+    return str(report.get("provider") or report.get("metadata", {}).get("provider") or PROVIDER_OCEAMO)
 
 
 def _report_identity(report: dict[str, Any]) -> tuple[str, str]:
-    """Return a stable provider-specific report identity."""
     metadata = report.get("metadata", {})
-    analysis_number = str(
-        metadata.get("provider_report_id")
-        or metadata.get("analysis_number")
-        or ""
+    return (
+        _report_provider(report),
+        str(metadata.get("provider_report_id") or metadata.get("analysis_number") or ""),
     )
-    return (_report_provider(report), analysis_number)
 
 
 def _report_sort_key(report: dict[str, Any]) -> str:
-    """Sort reports by sample time, falling back to report date."""
     metadata = report.get("metadata", {})
-    return str(
-        metadata.get("sample_taken")
-        or metadata.get("analysis_date")
-        or ""
-    )
+    return str(metadata.get("sample_taken") or metadata.get("analysis_date") or "")
 
 
-def _upsert_report(
-    reports: list[dict[str, Any]], report: dict[str, Any]
-) -> list[dict[str, Any]]:
-    """Add or replace a provider report and keep chronological order."""
+def _upsert_report(reports: list[dict[str, Any]], report: dict[str, Any]) -> list[dict[str, Any]]:
     identity = _report_identity(report)
-    merged = [
-        existing
-        for existing in reports
-        if _report_identity(existing) != identity
-    ]
+    merged = [existing for existing in reports if _report_identity(existing) != identity]
     merged.append(report)
     merged.sort(key=_report_sort_key)
     return merged[-MAX_STORED_REPORTS:]
 
 
-def _merge_reports(
-    existing_reports: list[dict[str, Any]],
-    imported_reports: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    """Merge a complete import batch into stored reports."""
+def _merge_reports(existing_reports: list[dict[str, Any]], imported_reports: list[dict[str, Any]]) -> list[dict[str, Any]]:
     reports = list(existing_reports)
     for report in imported_reports:
         reports = _upsert_report(reports, report)
     return reports
 
 
-def _updated_options_with_reports(
-    entry: ConfigEntry,
-    reports: list[dict[str, Any]],
-) -> dict[str, Any]:
-    """Preserve aquarium profile settings while updating stored reports."""
+def _updated_options_with_reports(entry: ConfigEntry, reports: list[dict[str, Any]]) -> dict[str, Any]:
     options = dict(entry.options)
     options[CONF_REPORTS] = reports
     return options
 
 
 def _batch_placeholders(reports: list[dict[str, Any]]) -> dict[str, str]:
-    """Build the compact list shown before a batch import is completed."""
     lines: list[str] = []
     for report in sorted(reports, key=_report_sort_key):
         metadata = report.get("metadata", {})
-        provider = report.get("provider_name") or PROVIDER_NAMES.get(
-            _report_provider(report),
-            _report_provider(report),
-        )
-        analysis_number = str(
-            metadata.get("provider_report_id")
-            or metadata.get("analysis_number")
-            or "—"
-        )
-        date_value = str(
-            metadata.get("analysis_date")
-            or metadata.get("sample_taken")
-            or "—"
-        )
+        provider = report.get("provider_name") or PROVIDER_NAMES.get(_report_provider(report), _report_provider(report))
+        analysis_number = str(metadata.get("provider_report_id") or metadata.get("analysis_number") or "—")
+        date_value = str(metadata.get("analysis_date") or metadata.get("sample_taken") or "—")
         if "T" in date_value:
             date_value = date_value.split("T", 1)[0]
         lines.append(f"✓ {date_value} · {provider} · {analysis_number}")
-
-    return {
-        "report_count": str(len(reports)),
-        "report_list": "\n".join(lines) or "—",
-    }
+    return {"report_count": str(len(reports)), "report_list": "\n".join(lines) or "—"}
 
 
 class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -755,6 +533,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
     _pending_aquarium_volume_l: float | None = None
     _pending_stocking_profile: str | None = None
     _pending_supply_system: str | None = None
+    _pending_reef_method: str | None = None
     _pending_target_mode: str | None = None
     _pending_custom_targets: dict[str, dict[str, float]] | None = None
 
@@ -762,107 +541,78 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
     @callback
     @override
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlowWithReload:
-        """Return the multi-provider import and aquarium-settings flow."""
         return ReefIcpOptionsFlow()
 
     def _batch_reports(self) -> list[dict[str, Any]]:
-        """Return this flow's pending report batch."""
         if self._pending_reports is None:
             self._pending_reports = []
         return self._pending_reports
 
     def _clear_current_pdf(self) -> None:
-        """Clear state for the PDF currently being confirmed."""
         self._pending_pdf_path = None
         self._pending_detected_provider = None
         self._pending_provider = None
         self._pending_report = None
 
     def _clear_pending_setup(self) -> None:
-        """Clear all state belonging to the new-aquarium import batch."""
         self._clear_current_pdf()
         self._pending_reports = None
         self._pending_aquarium_name = None
         self._pending_aquarium_volume_l = None
         self._pending_stocking_profile = None
         self._pending_supply_system = None
+        self._pending_reef_method = None
         self._pending_target_mode = None
         self._pending_custom_targets = None
 
-    async def _prepare_pdf_from_input(
-        self,
-        uploaded_file_id: str,
-    ) -> tuple[str, str, dict[str, Any] | None]:
-        """Prepare one PDF in the executor."""
-        return await self.hass.async_add_executor_job(
-            _prepare_uploaded_pdf,
-            self.hass,
-            uploaded_file_id,
-        )
+    async def _prepare_pdf_from_input(self, uploaded_file_id: str) -> tuple[str, str, dict[str, Any] | None]:
+        return await self.hass.async_add_executor_job(_prepare_uploaded_pdf, self.hass, uploaded_file_id)
 
     async def _accept_report(self, report: dict[str, Any]) -> ConfigFlowResult:
-        """Add one confirmed report to the setup batch and continue."""
-        await self.hass.async_add_executor_job(
-            _cleanup_pending_pdf,
-            self._pending_pdf_path,
-        )
+        await self.hass.async_add_executor_job(_cleanup_pending_pdf, self._pending_pdf_path)
         self._pending_reports = _upsert_report(self._batch_reports(), report)
         self._clear_current_pdf()
         return await self.async_step_import_more()
 
     def _create_aquarium_entry(self) -> ConfigFlowResult:
-        """Create an aquarium profile without requiring an ICP report."""
         if (
             self._pending_aquarium_name is None
             or self._pending_aquarium_volume_l is None
             or self._pending_stocking_profile is None
             or self._pending_supply_system is None
+            or self._pending_reef_method is None
         ):
             raise ValueError("Aquarium profile is incomplete.")
 
         aquarium_name = self._pending_aquarium_name
-        aquarium_volume_l = self._pending_aquarium_volume_l
-        stocking_profile = self._pending_stocking_profile
-        supply_system = self._pending_supply_system
-        custom_targets = dict(self._pending_custom_targets or {})
+        options = {
+            CONF_REPORTS: [],
+            CONF_AQUARIUM_VOLUME_L: self._pending_aquarium_volume_l,
+            CONF_STOCKING_PROFILE: self._pending_stocking_profile,
+            CONF_SUPPLY_SYSTEM: self._pending_supply_system,
+            CONF_REEF_METHOD: self._pending_reef_method,
+            CONF_CUSTOM_TARGETS: dict(self._pending_custom_targets or {}),
+        }
         self._clear_pending_setup()
-
         return self.async_create_entry(
             title=aquarium_name,
             data={CONF_AQUARIUM_NAME: aquarium_name},
-            options={
-                CONF_REPORTS: [],
-                CONF_AQUARIUM_VOLUME_L: aquarium_volume_l,
-                CONF_STOCKING_PROFILE: stocking_profile,
-                CONF_SUPPLY_SYSTEM: supply_system,
-                CONF_CUSTOM_TARGETS: custom_targets,
-            },
+            options=options,
         )
 
     @override
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Create an aquarium profile; ICP reports can be imported later."""
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
-
         if user_input is not None:
             try:
                 aquarium_name = str(user_input[CONF_AQUARIUM_NAME]).strip()
-                aquarium_volume_l = _normalize_aquarium_volume(
-                    user_input[CONF_AQUARIUM_VOLUME_L]
-                )
-                stocking_profile = _normalize_stocking_profile(
-                    user_input[CONF_STOCKING_PROFILE]
-                )
-                supply_system = _normalize_supply_system(
-                    user_input[CONF_SUPPLY_SYSTEM]
-                )
-                target_mode = _normalize_target_mode(
-                    user_input[CONF_TARGET_MODE]
-                )
                 if not aquarium_name:
                     raise ValueError("Aquarium name must not be empty.")
+                aquarium_volume_l = _normalize_aquarium_volume(user_input[CONF_AQUARIUM_VOLUME_L])
+                stocking_profile = _normalize_stocking_profile(user_input[CONF_STOCKING_PROFILE])
+                supply_system = _normalize_supply_system(user_input[CONF_SUPPLY_SYSTEM])
+                reef_method = _normalize_reef_method(user_input[CONF_REEF_METHOD])
+                target_mode = _normalize_target_mode(user_input[CONF_TARGET_MODE])
             except (TypeError, ValueError):
                 errors["base"] = "invalid_aquarium_profile"
             else:
@@ -871,9 +621,9 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._pending_aquarium_volume_l = aquarium_volume_l
                 self._pending_stocking_profile = stocking_profile
                 self._pending_supply_system = supply_system
+                self._pending_reef_method = reef_method
                 self._pending_target_mode = target_mode
                 self._pending_custom_targets = {}
-
                 if supply_system == SUPPLY_SYSTEM_CUSTOM:
                     return await self.async_step_custom_supply_system()
                 if target_mode == TARGET_MODE_CUSTOM:
@@ -882,47 +632,33 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
 
         schema = probatio.Schema(
             {
-                probatio.Required(CONF_AQUARIUM_NAME): TextSelector(
-                    TextSelectorConfig(type=TextSelectorType.TEXT)
-                ),
+                probatio.Required(CONF_AQUARIUM_NAME): TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT)),
                 probatio.Required(CONF_AQUARIUM_VOLUME_L): _volume_selector(),
-                probatio.Required(CONF_STOCKING_PROFILE): _stocking_profile_selector(
-                    self.hass
-                ),
-                probatio.Required(CONF_SUPPLY_SYSTEM): _supply_system_selector(
-                    self.hass
-                ),
-                probatio.Required(CONF_TARGET_MODE): _target_mode_selector(
-                    self.hass
-                ),
+                probatio.Required(CONF_STOCKING_PROFILE): _stocking_profile_selector(self.hass),
+                probatio.Required(CONF_SUPPLY_SYSTEM): _supply_system_selector(self.hass),
+                probatio.Required(CONF_REEF_METHOD): _reef_method_selector(self.hass),
+                probatio.Required(CONF_TARGET_MODE): _target_mode_selector(self.hass),
             }
         )
-
         return self.async_show_form(
             step_id="user",
             data_schema=self.add_suggested_values_to_schema(
                 schema,
-                user_input or {CONF_TARGET_MODE: TARGET_MODE_LABORATORY},
+                user_input or {
+                    CONF_REEF_METHOD: REEF_METHOD_NONE,
+                    CONF_TARGET_MODE: TARGET_MODE_LABORATORY,
+                },
             ),
             errors=errors,
         )
 
-    async def async_step_custom_supply_system(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Collect a custom supply-system name during aquarium setup."""
-        if (
-            self._pending_aquarium_name is None
-            or self._pending_supply_system != SUPPLY_SYSTEM_CUSTOM
-        ):
+    async def async_step_custom_supply_system(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if self._pending_aquarium_name is None or self._pending_supply_system != SUPPLY_SYSTEM_CUSTOM:
             return await self.async_step_user()
-
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
-                supply_system = _normalize_supply_system(
-                    user_input[CONF_CUSTOM_SUPPLY_SYSTEM]
-                )
+                supply_system = _normalize_supply_system(user_input[CONF_CUSTOM_SUPPLY_SYSTEM])
                 if supply_system == SUPPLY_SYSTEM_CUSTOM:
                     raise ValueError("Reserved supply-system value.")
             except (TypeError, ValueError):
@@ -932,26 +668,15 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                 if self._pending_target_mode == TARGET_MODE_CUSTOM:
                     return await self.async_step_custom_targets()
                 return self._create_aquarium_entry()
-
         return self.async_show_form(
             step_id="custom_supply_system",
-            data_schema=self.add_suggested_values_to_schema(
-                _custom_supply_system_schema(),
-                user_input,
-            ),
+            data_schema=self.add_suggested_values_to_schema(_custom_supply_system_schema(), user_input),
             errors=errors,
         )
 
-    async def async_step_custom_targets(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Collect optional personal targets during initial aquarium setup."""
-        if (
-            self._pending_aquarium_name is None
-            or self._pending_target_mode != TARGET_MODE_CUSTOM
-        ):
+    async def async_step_custom_targets(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if self._pending_aquarium_name is None or self._pending_target_mode != TARGET_MODE_CUSTOM:
             return await self.async_step_user()
-
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
@@ -960,30 +685,20 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_custom_targets"
             else:
                 return self._create_aquarium_entry()
-
         suggested = _custom_target_suggestions(self._pending_custom_targets)
         return self.async_show_form(
             step_id="custom_targets",
-            data_schema=self.add_suggested_values_to_schema(
-                _custom_targets_schema(),
-                user_input or suggested,
-            ),
+            data_schema=self.add_suggested_values_to_schema(_custom_targets_schema(), user_input or suggested),
             errors=errors,
         )
 
-    async def async_step_add_icp(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Add another PDF to a new aquarium's pending import batch."""
+    async def async_step_add_icp(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if self._pending_aquarium_name is None or not self._batch_reports():
             return await self.async_step_user()
-
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
-                pending_path, provider, preview_report = (
-                    await self._prepare_pdf_from_input(user_input[CONF_PDF_FILE])
-                )
+                pending_path, provider, preview_report = await self._prepare_pdf_from_input(user_input[CONF_PDF_FILE])
             except UnsupportedIcpProviderError:
                 errors["base"] = "unsupported_provider"
             except IcpParseError:
@@ -996,14 +711,7 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._pending_provider = provider
                 self._pending_report = preview_report
                 return await self.async_step_confirm_provider()
-
-        schema = probatio.Schema(
-            {
-                probatio.Required(CONF_PDF_FILE): FileSelector(
-                    FileSelectorConfig(accept=".pdf,application/pdf")
-                ),
-            }
-        )
+        schema = probatio.Schema({probatio.Required(CONF_PDF_FILE): FileSelector(FileSelectorConfig(accept=".pdf,application/pdf"))})
         return self.async_show_form(
             step_id="add_icp",
             data_schema=self.add_suggested_values_to_schema(schema, user_input),
@@ -1011,35 +719,16 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_confirm_provider(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Confirm or override the automatically detected report provider."""
+    async def async_step_confirm_provider(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
-
-        if (
-            self._pending_pdf_path is None
-            or self._pending_detected_provider is None
-            or self._pending_aquarium_name is None
-            or self._pending_aquarium_volume_l is None
-            or self._pending_stocking_profile is None
-            or self._pending_supply_system is None
-        ):
-            if self._batch_reports():
-                return await self.async_step_add_icp()
-            return await self.async_step_user()
-
+        if self._pending_pdf_path is None or self._pending_detected_provider is None or self._pending_aquarium_name is None:
+            return await (self.async_step_add_icp() if self._batch_reports() else self.async_step_user())
         detected_provider = self._pending_detected_provider
-
         if user_input is not None:
             selected_provider = str(user_input[CONF_PROVIDER]).strip()
             self._pending_provider = selected_provider
-
             try:
-                if (
-                    selected_provider == detected_provider
-                    and self._pending_report is not None
-                ):
+                if selected_provider == detected_provider and self._pending_report is not None:
                     report = self._pending_report
                 else:
                     report = await self.hass.async_add_executor_job(
@@ -1056,41 +745,18 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unknown"
             else:
                 return await self._accept_report(report)
-
-        schema = probatio.Schema(
-            {
-                probatio.Required(CONF_PROVIDER): _provider_selector(),
-            }
-        )
-        suggested = user_input or {CONF_PROVIDER: detected_provider}
+        schema = probatio.Schema({probatio.Required(CONF_PROVIDER): _provider_selector()})
         return self.async_show_form(
             step_id="confirm_provider",
-            data_schema=self.add_suggested_values_to_schema(schema, suggested),
-            description_placeholders=_confirmation_placeholders(
-                detected_provider,
-                self._pending_report,
-            ),
+            data_schema=self.add_suggested_values_to_schema(schema, user_input or {CONF_PROVIDER: detected_provider}),
+            description_placeholders=_confirmation_placeholders(detected_provider, self._pending_report),
             errors=errors,
         )
 
-    async def async_step_analysis_date(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Ask for the analysis date after the provider has been confirmed."""
+    async def async_step_analysis_date(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
-
-        if (
-            self._pending_pdf_path is None
-            or self._pending_provider is None
-            or self._pending_aquarium_name is None
-            or self._pending_aquarium_volume_l is None
-            or self._pending_stocking_profile is None
-            or self._pending_supply_system is None
-        ):
-            if self._batch_reports():
-                return await self.async_step_add_icp()
-            return await self.async_step_user()
-
+        if self._pending_pdf_path is None or self._pending_provider is None:
+            return await (self.async_step_add_icp() if self._batch_reports() else self.async_step_user())
         if user_input is not None:
             try:
                 report = await self.hass.async_add_executor_job(
@@ -1107,18 +773,8 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unknown"
             else:
                 return await self._accept_report(report)
-
-        schema = probatio.Schema(
-            {
-                probatio.Required(CONF_ANALYSIS_DATE): DateSelector(
-                    DateSelectorConfig()
-                ),
-            }
-        )
-        provider_name = PROVIDER_NAMES.get(
-            self._pending_provider or "",
-            self._pending_provider or "ICP",
-        )
+        schema = probatio.Schema({probatio.Required(CONF_ANALYSIS_DATE): DateSelector(DateSelectorConfig())})
+        provider_name = PROVIDER_NAMES.get(self._pending_provider or "", self._pending_provider or "ICP")
         return self.async_show_form(
             step_id="analysis_date",
             data_schema=self.add_suggested_values_to_schema(schema, user_input),
@@ -1126,58 +782,32 @@ class ReefIcpConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_import_more(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Review a new aquarium's pending reports and continue or finish."""
+    async def async_step_import_more(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         reports = self._batch_reports()
-        if (
-            not reports
-            or self._pending_aquarium_name is None
-            or self._pending_aquarium_volume_l is None
-            or self._pending_stocking_profile is None
-            or self._pending_supply_system is None
-        ):
+        if not reports or self._pending_aquarium_name is None:
             return await self.async_step_user()
-
         if user_input is not None:
             action = str(user_input[CONF_BATCH_ACTION])
             if action == BATCH_ACTION_ADD:
                 return await self.async_step_add_icp()
             if action == BATCH_ACTION_FINISH:
+                if self._pending_reef_method is None:
+                    self._pending_reef_method = REEF_METHOD_NONE
                 aquarium_name = self._pending_aquarium_name
-                aquarium_volume_l = self._pending_aquarium_volume_l
-                stocking_profile = self._pending_stocking_profile
-                supply_system = self._pending_supply_system
-                custom_targets = dict(self._pending_custom_targets or {})
-                stored_reports = _apply_custom_targets_to_reports(
-                    list(reports),
-                    custom_targets,
-                )
+                options = {
+                    CONF_REPORTS: _apply_custom_targets_to_reports(list(reports), dict(self._pending_custom_targets or {})),
+                    CONF_AQUARIUM_VOLUME_L: self._pending_aquarium_volume_l,
+                    CONF_STOCKING_PROFILE: self._pending_stocking_profile,
+                    CONF_SUPPLY_SYSTEM: self._pending_supply_system,
+                    CONF_REEF_METHOD: self._pending_reef_method,
+                    CONF_CUSTOM_TARGETS: dict(self._pending_custom_targets or {}),
+                }
                 self._clear_pending_setup()
-                return self.async_create_entry(
-                    title=aquarium_name,
-                    data={CONF_AQUARIUM_NAME: aquarium_name},
-                    options={
-                        CONF_REPORTS: stored_reports,
-                        CONF_AQUARIUM_VOLUME_L: aquarium_volume_l,
-                        CONF_STOCKING_PROFILE: stocking_profile,
-                        CONF_SUPPLY_SYSTEM: supply_system,
-                        CONF_CUSTOM_TARGETS: custom_targets,
-                    },
-                )
-
-        schema = probatio.Schema(
-            {
-                probatio.Required(CONF_BATCH_ACTION): _batch_action_selector(
-                    self.hass
-                ),
-            }
-        )
-        suggested = user_input or {CONF_BATCH_ACTION: BATCH_ACTION_ADD}
+                return self.async_create_entry(title=aquarium_name, data={CONF_AQUARIUM_NAME: aquarium_name}, options=options)
+        schema = probatio.Schema({probatio.Required(CONF_BATCH_ACTION): _batch_action_selector(self.hass)})
         return self.async_show_form(
             step_id="import_more",
-            data_schema=self.add_suggested_values_to_schema(schema, suggested),
+            data_schema=self.add_suggested_values_to_schema(schema, user_input or {CONF_BATCH_ACTION: BATCH_ACTION_ADD}),
             description_placeholders=_batch_placeholders(reports),
         )
 
@@ -1194,83 +824,51 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
     _pending_target_mode: str | None = None
 
     def _batch_reports(self) -> list[dict[str, Any]]:
-        """Return this options flow's pending report batch."""
         if self._pending_reports is None:
             self._pending_reports = []
         return self._pending_reports
 
     def _clear_current_pdf(self) -> None:
-        """Clear state for the PDF currently being confirmed."""
         self._pending_pdf_path = None
         self._pending_detected_provider = None
         self._pending_provider = None
         self._pending_report = None
 
     def _clear_batch(self) -> None:
-        """Clear all pending import state."""
         self._clear_current_pdf()
         self._pending_reports = None
 
     async def _accept_report(self, report: dict[str, Any]) -> ConfigFlowResult:
-        """Add one confirmed report to the current options import batch."""
-        await self.hass.async_add_executor_job(
-            _cleanup_pending_pdf,
-            self._pending_pdf_path,
-        )
+        await self.hass.async_add_executor_job(_cleanup_pending_pdf, self._pending_pdf_path)
         self._pending_reports = _upsert_report(self._batch_reports(), report)
         self._clear_current_pdf()
         return await self.async_step_import_more()
 
     def _store_reports(self, imported_reports: list[dict[str, Any]]) -> ConfigFlowResult:
-        """Store a completed report batch while preserving aquarium settings."""
         existing_reports = list(self.config_entry.options.get(CONF_REPORTS, []))
-        existing_identities = {
-            _report_identity(report) for report in existing_reports
-        }
-        replacing_existing = any(
-            _report_identity(report) in existing_identities
-            for report in imported_reports
-        )
+        existing_identities = {_report_identity(report) for report in existing_reports}
+        replacing_existing = any(_report_identity(report) in existing_identities for report in imported_reports)
         reports = _merge_reports(existing_reports, imported_reports)
         custom_targets = self.config_entry.options.get(CONF_CUSTOM_TARGETS, {})
         if not isinstance(custom_targets, dict):
             custom_targets = {}
         reports = _apply_custom_targets_to_reports(reports, custom_targets)
         if replacing_existing:
-            async_request_statistics_rebuild(
-                self.hass,
-                self.config_entry,
-                [*existing_reports, *imported_reports],
-            )
-        return self.async_create_entry(
-            title="",
-            data=_updated_options_with_reports(self.config_entry, reports),
-        )
+            async_request_statistics_rebuild(self.hass, self.config_entry, [*existing_reports, *imported_reports])
+        return self.async_create_entry(title="", data=_updated_options_with_reports(self.config_entry, reports))
 
     @override
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Let the user choose between importing ICP data and aquarium settings."""
-        return self.async_show_menu(
-            step_id="init",
-            menu_options=["import_icp", "aquarium_settings"],
-        )
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        return self.async_show_menu(step_id="init", menu_options=["import_icp", "aquarium_settings"])
 
-    async def async_step_import_icp(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Upload one ICP PDF for the current batch."""
+    async def async_step_import_icp(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
-
         if user_input is not None:
             try:
-                pending_path, provider, preview_report = (
-                    await self.hass.async_add_executor_job(
-                        _prepare_uploaded_pdf,
-                        self.hass,
-                        user_input[CONF_PDF_FILE],
-                    )
+                pending_path, provider, preview_report = await self.hass.async_add_executor_job(
+                    _prepare_uploaded_pdf,
+                    self.hass,
+                    user_input[CONF_PDF_FILE],
                 )
             except UnsupportedIcpProviderError:
                 errors["base"] = "unsupported_provider"
@@ -1286,15 +884,7 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
                 self._pending_provider = provider
                 self._pending_report = preview_report
                 return await self.async_step_confirm_provider()
-
-        schema = probatio.Schema(
-            {
-                probatio.Required(CONF_PDF_FILE): FileSelector(
-                    FileSelectorConfig(accept=".pdf,application/pdf")
-                ),
-            }
-        )
-
+        schema = probatio.Schema({probatio.Required(CONF_PDF_FILE): FileSelector(FileSelectorConfig(accept=".pdf,application/pdf"))})
         return self.async_show_form(
             step_id="import_icp",
             data_schema=self.add_suggested_values_to_schema(schema, user_input),
@@ -1302,29 +892,16 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
             errors=errors,
         )
 
-    async def async_step_confirm_provider(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Confirm or override the detected provider before staging a report."""
+    async def async_step_confirm_provider(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
-
-        if (
-            self._pending_pdf_path is None
-            or self._pending_detected_provider is None
-        ):
+        if self._pending_pdf_path is None or self._pending_detected_provider is None:
             return await self.async_step_import_icp()
-
         detected_provider = self._pending_detected_provider
-
         if user_input is not None:
             selected_provider = str(user_input[CONF_PROVIDER]).strip()
             self._pending_provider = selected_provider
-
             try:
-                if (
-                    selected_provider == detected_provider
-                    and self._pending_report is not None
-                ):
+                if selected_provider == detected_provider and self._pending_report is not None:
                     report = self._pending_report
                 else:
                     report = await self.hass.async_add_executor_job(
@@ -1341,31 +918,18 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
                 errors["base"] = "unknown"
             else:
                 return await self._accept_report(report)
-
-        schema = probatio.Schema(
-            {
-                probatio.Required(CONF_PROVIDER): _provider_selector(),
-            }
-        )
-        suggested = user_input or {CONF_PROVIDER: detected_provider}
+        schema = probatio.Schema({probatio.Required(CONF_PROVIDER): _provider_selector()})
         return self.async_show_form(
             step_id="confirm_provider",
-            data_schema=self.add_suggested_values_to_schema(schema, suggested),
-            description_placeholders=_confirmation_placeholders(
-                detected_provider,
-                self._pending_report,
-            ),
+            data_schema=self.add_suggested_values_to_schema(schema, user_input or {CONF_PROVIDER: detected_provider}),
+            description_placeholders=_confirmation_placeholders(detected_provider, self._pending_report),
             errors=errors,
         )
 
-    async def async_step_import_more(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Review the current options import batch and continue or finish."""
+    async def async_step_import_more(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         reports = self._batch_reports()
         if not reports:
             return await self.async_step_import_icp()
-
         if user_input is not None:
             action = str(user_input[CONF_BATCH_ACTION])
             if action == BATCH_ACTION_ADD:
@@ -1374,53 +938,32 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
                 imported_reports = list(reports)
                 self._clear_batch()
                 return self._store_reports(imported_reports)
-
-        schema = probatio.Schema(
-            {
-                probatio.Required(CONF_BATCH_ACTION): _batch_action_selector(
-                    self.hass
-                ),
-            }
-        )
-        suggested = user_input or {CONF_BATCH_ACTION: BATCH_ACTION_ADD}
+        schema = probatio.Schema({probatio.Required(CONF_BATCH_ACTION): _batch_action_selector(self.hass)})
         return self.async_show_form(
             step_id="import_more",
-            data_schema=self.add_suggested_values_to_schema(schema, suggested),
+            data_schema=self.add_suggested_values_to_schema(schema, user_input or {CONF_BATCH_ACTION: BATCH_ACTION_ADD}),
             description_placeholders=_batch_placeholders(reports),
         )
 
-    def _store_aquarium_settings(
-        self,
-        custom_targets: dict[str, dict[str, float]],
-    ) -> ConfigFlowResult:
-        """Persist pending aquarium settings and optional personal targets."""
+    def _store_aquarium_settings(self, custom_targets: dict[str, dict[str, float]]) -> ConfigFlowResult:
         if self._pending_aquarium_settings is None:
             raise ValueError("Aquarium settings are not prepared.")
-
         options = dict(self.config_entry.options)
         options.update(self._pending_aquarium_settings)
+        options.setdefault(CONF_REEF_METHOD, REEF_METHOD_NONE)
         options[CONF_CUSTOM_TARGETS] = custom_targets
-        options[CONF_REPORTS] = _apply_custom_targets_to_reports(
-            list(options.get(CONF_REPORTS, [])),
-            custom_targets,
-        )
+        options[CONF_REPORTS] = _apply_custom_targets_to_reports(list(options.get(CONF_REPORTS, [])), custom_targets)
         self._pending_aquarium_settings = None
         self._pending_target_mode = None
         return self.async_create_entry(title="", data=options)
 
-    async def async_step_custom_supply_system(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Collect a user-defined supply-system name."""
+    async def async_step_custom_supply_system(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if self._pending_aquarium_settings is None:
             return await self.async_step_aquarium_settings()
-
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
-                supply_system = _normalize_supply_system(
-                    user_input[CONF_CUSTOM_SUPPLY_SYSTEM]
-                )
+                supply_system = _normalize_supply_system(user_input[CONF_CUSTOM_SUPPLY_SYSTEM])
                 if supply_system == SUPPLY_SYSTEM_CUSTOM:
                     raise ValueError("Reserved supply-system value.")
             except (TypeError, ValueError):
@@ -1430,36 +973,21 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
                 if self._pending_target_mode == TARGET_MODE_CUSTOM:
                     return await self.async_step_custom_targets()
                 return self._store_aquarium_settings({})
-
         return self.async_show_form(
             step_id="custom_supply_system",
-            data_schema=self.add_suggested_values_to_schema(
-                _custom_supply_system_schema(),
-                user_input,
-            ),
+            data_schema=self.add_suggested_values_to_schema(_custom_supply_system_schema(), user_input),
             errors=errors,
         )
 
-    async def async_step_aquarium_settings(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Edit persistent aquarium settings and personal target mode."""
+    async def async_step_aquarium_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
-
         if user_input is not None:
             try:
-                aquarium_volume_l = _normalize_aquarium_volume(
-                    user_input[CONF_AQUARIUM_VOLUME_L]
-                )
-                stocking_profile = _normalize_stocking_profile(
-                    user_input[CONF_STOCKING_PROFILE]
-                )
-                supply_system = _normalize_supply_system(
-                    user_input[CONF_SUPPLY_SYSTEM]
-                )
-                target_mode = _normalize_target_mode(
-                    user_input[CONF_TARGET_MODE]
-                )
+                aquarium_volume_l = _normalize_aquarium_volume(user_input[CONF_AQUARIUM_VOLUME_L])
+                stocking_profile = _normalize_stocking_profile(user_input[CONF_STOCKING_PROFILE])
+                supply_system = _normalize_supply_system(user_input[CONF_SUPPLY_SYSTEM])
+                reef_method = _normalize_reef_method(user_input[CONF_REEF_METHOD])
+                target_mode = _normalize_target_mode(user_input[CONF_TARGET_MODE])
             except (TypeError, ValueError):
                 errors["base"] = "invalid_aquarium_profile"
             else:
@@ -1467,36 +995,24 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
                 self._pending_aquarium_settings = {
                     CONF_AQUARIUM_VOLUME_L: aquarium_volume_l,
                     CONF_STOCKING_PROFILE: stocking_profile,
+                    CONF_REEF_METHOD: reef_method,
                 }
-
                 if supply_system == SUPPLY_SYSTEM_CUSTOM:
                     return await self.async_step_custom_supply_system()
-
                 self._pending_aquarium_settings[CONF_SUPPLY_SYSTEM] = supply_system
                 if target_mode == TARGET_MODE_CUSTOM:
                     return await self.async_step_custom_targets()
-
                 return self._store_aquarium_settings({})
 
         current_targets = self.config_entry.options.get(CONF_CUSTOM_TARGETS, {})
         if not isinstance(current_targets, dict):
             current_targets = {}
-
-        current_supply_system = str(
-            self.config_entry.options.get(
-                CONF_SUPPLY_SYSTEM,
-                SUPPLY_SYSTEM_NONE,
-            )
-        )
+        current_supply_system = str(self.config_entry.options.get(CONF_SUPPLY_SYSTEM, SUPPLY_SYSTEM_NONE))
         suggested: dict[str, Any] = {
-            CONF_STOCKING_PROFILE: self.config_entry.options.get(
-                CONF_STOCKING_PROFILE,
-                STOCKING_PROFILE_OTHER,
-            ),
+            CONF_STOCKING_PROFILE: self.config_entry.options.get(CONF_STOCKING_PROFILE, STOCKING_PROFILE_OTHER),
             CONF_SUPPLY_SYSTEM: current_supply_system,
-            CONF_TARGET_MODE: (
-                TARGET_MODE_CUSTOM if current_targets else TARGET_MODE_LABORATORY
-            ),
+            CONF_REEF_METHOD: self.config_entry.options.get(CONF_REEF_METHOD, REEF_METHOD_NONE),
+            CONF_TARGET_MODE: TARGET_MODE_CUSTOM if current_targets else TARGET_MODE_LABORATORY,
         }
         if volume := self.config_entry.options.get(CONF_AQUARIUM_VOLUME_L):
             suggested[CONF_AQUARIUM_VOLUME_L] = volume
@@ -1504,39 +1020,25 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
         schema = probatio.Schema(
             {
                 probatio.Required(CONF_AQUARIUM_VOLUME_L): _volume_selector(),
-                probatio.Required(CONF_STOCKING_PROFILE): _stocking_profile_selector(
-                    self.hass
-                ),
-                probatio.Required(CONF_SUPPLY_SYSTEM): _supply_system_selector(
-                    self.hass,
-                    current_supply_system,
-                ),
-                probatio.Required(CONF_TARGET_MODE): _target_mode_selector(
-                    self.hass
-                ),
+                probatio.Required(CONF_STOCKING_PROFILE): _stocking_profile_selector(self.hass),
+                probatio.Required(CONF_SUPPLY_SYSTEM): _supply_system_selector(self.hass, current_supply_system),
+                probatio.Required(CONF_REEF_METHOD): _reef_method_selector(self.hass),
+                probatio.Required(CONF_TARGET_MODE): _target_mode_selector(self.hass),
             }
         )
         return self.async_show_form(
             step_id="aquarium_settings",
-            data_schema=self.add_suggested_values_to_schema(
-                schema,
-                user_input or suggested,
-            ),
+            data_schema=self.add_suggested_values_to_schema(schema, user_input or suggested),
             errors=errors,
         )
 
-    async def async_step_custom_targets(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Edit optional personal Salinity/KH/Ca/Mg target ranges."""
+    async def async_step_custom_targets(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if self._pending_aquarium_settings is None:
             return await self.async_step_aquarium_settings()
-
         errors: dict[str, str] = {}
         current_targets = self.config_entry.options.get(CONF_CUSTOM_TARGETS, {})
         if not isinstance(current_targets, dict):
             current_targets = {}
-
         if user_input is not None:
             try:
                 custom_targets = _normalize_custom_targets(user_input)
@@ -1544,26 +1046,17 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
                 errors["base"] = "invalid_custom_targets"
             else:
                 return self._store_aquarium_settings(custom_targets)
-
         suggested = _custom_target_suggestions(current_targets)
         return self.async_show_form(
             step_id="custom_targets",
-            data_schema=self.add_suggested_values_to_schema(
-                _custom_targets_schema(),
-                user_input or suggested,
-            ),
+            data_schema=self.add_suggested_values_to_schema(_custom_targets_schema(), user_input or suggested),
             errors=errors,
         )
 
-    async def async_step_analysis_date(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Ask for a missing analysis date after provider confirmation."""
+    async def async_step_analysis_date(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
-
         if self._pending_pdf_path is None or self._pending_provider is None:
             return await self.async_step_import_icp()
-
         if user_input is not None:
             try:
                 report = await self.hass.async_add_executor_job(
@@ -1580,18 +1073,8 @@ class ReefIcpOptionsFlow(OptionsFlowWithReload):
                 errors["base"] = "unknown"
             else:
                 return await self._accept_report(report)
-
-        schema = probatio.Schema(
-            {
-                probatio.Required(CONF_ANALYSIS_DATE): DateSelector(
-                    DateSelectorConfig()
-                ),
-            }
-        )
-        provider_name = PROVIDER_NAMES.get(
-            self._pending_provider or "",
-            self._pending_provider or "ICP",
-        )
+        schema = probatio.Schema({probatio.Required(CONF_ANALYSIS_DATE): DateSelector(DateSelectorConfig())})
+        provider_name = PROVIDER_NAMES.get(self._pending_provider or "", self._pending_provider or "ICP")
         return self.async_show_form(
             step_id="analysis_date",
             data_schema=self.add_suggested_values_to_schema(schema, user_input),

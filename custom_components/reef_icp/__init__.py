@@ -16,6 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
 from .const import CONF_REPORTS, DOMAIN
+from .sensor_v015 import apply_sensor_extensions
 from .statistics import (
     async_import_icp_statistics,
     async_rebuild_icp_statistics,
@@ -24,10 +25,15 @@ from .statistics import (
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
-CARD_VERSION = "0.13.7"
+CARD_VERSION = "0.15.0"
 CARD_URL = "/reef_icp/reef-icp-card.js"
 CARD_RESOURCE_URL = f"{CARD_URL}?v={CARD_VERSION}"
 CARD_FILE = Path(__file__).parent / "www" / "reef-icp-card.js"
+
+CARD_EXTENSION_URL = "/reef_icp/reef-icp-card-v015.js"
+CARD_EXTENSION_RESOURCE_URL = f"{CARD_EXTENSION_URL}?v={CARD_VERSION}"
+CARD_EXTENSION_FILE = Path(__file__).parent / "www" / "reef-icp-card-v015.js"
+
 _SENSOR_PLATFORM_ENTRIES_KEY = f"{DOMAIN}_sensor_platform_entries"
 
 _NOT_DETERMINED_RAW_VALUES = {"n.g.", "n.g", "n.b.", "n.b", "---", "-"}
@@ -37,7 +43,6 @@ def _measurement_is_determined(measurement: dict[str, Any]) -> bool:
     """Return whether a report actually determined this parameter."""
     raw = str(measurement.get("raw_value") or "").strip().lower()
     if raw in {"n.n.", "n.n"}:
-        # Not detectable is still a real analytical result.
         return True
     if raw in _NOT_DETERMINED_RAW_VALUES:
         return False
@@ -86,8 +91,6 @@ def _annotate_history_visibility(
             )
             measurement["ever_determined"] = ever_determined.get(key, False)
 
-            # Presentation-only migration for older stored osmosis reports.
-            # Keep the stable key/category while making the water source clear.
             if category == "osmosis":
                 name = str(measurement.get("name") or "").strip()
                 if name and not name.casefold().endswith("(osmose)"):
@@ -96,8 +99,40 @@ def _annotate_history_visibility(
     return updated
 
 
-async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
-    """Register the bundled card as a Lovelace resource when storage mode is used."""
+async def _async_register_one_lovelace_resource(
+    resources: ResourceStorageCollection,
+    resource_url: str,
+) -> None:
+    """Create or update one bundled module resource."""
+    base_url = resource_url.split("?", 1)[0]
+    existing = None
+    for item in resources.async_items() or []:
+        url = str(item.get("url", ""))
+        if url.split("?", 1)[0] == base_url:
+            existing = item
+            break
+
+    if existing is None:
+        await resources.async_create_item(
+            {
+                "res_type": "module",
+                "url": resource_url,
+            }
+        )
+        return
+
+    if existing.get("url") != resource_url or existing.get("type") != "module":
+        await resources.async_update_item(
+            existing["id"],
+            {
+                "res_type": "module",
+                "url": resource_url,
+            },
+        )
+
+
+async def _async_register_lovelace_resources(hass: HomeAssistant) -> None:
+    """Register the bundled card and its 0.15 extension in storage mode."""
     lovelace = hass.data.get(LOVELACE_DATA)
     if lovelace is None or lovelace.resource_mode != MODE_STORAGE:
         return
@@ -107,31 +142,11 @@ async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
         return
 
     await resources.async_get_info()
-
-    existing = None
-    for item in resources.async_items() or []:
-        url = str(item.get("url", ""))
-        if url.split("?", 1)[0] == CARD_URL:
-            existing = item
-            break
-
-    if existing is None:
-        await resources.async_create_item(
-            {
-                "res_type": "module",
-                "url": CARD_RESOURCE_URL,
-            }
-        )
-        return
-
-    if existing.get("url") != CARD_RESOURCE_URL or existing.get("type") != "module":
-        await resources.async_update_item(
-            existing["id"],
-            {
-                "res_type": "module",
-                "url": CARD_RESOURCE_URL,
-            },
-        )
+    await _async_register_one_lovelace_resource(resources, CARD_RESOURCE_URL)
+    await _async_register_one_lovelace_resource(
+        resources,
+        CARD_EXTENSION_RESOURCE_URL,
+    )
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -143,17 +158,27 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 path=str(CARD_FILE),
                 cache_headers=False,
             ),
+            StaticPathConfig(
+                url_path=CARD_EXTENSION_URL,
+                path=str(CARD_EXTENSION_FILE),
+                cache_headers=False,
+            ),
         ]
     )
 
     add_extra_js_url(hass, CARD_RESOURCE_URL)
-    await _async_register_lovelace_resource(hass)
+    add_extra_js_url(hass, CARD_EXTENSION_RESOURCE_URL)
+    await _async_register_lovelace_resources(hass)
 
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Reef ICP from a config entry."""
+    # Apply the 0.15 profile/guidance extension before Home Assistant forwards
+    # the sensor platform. The patch is idempotent and does not change entity IDs.
+    apply_sensor_extensions()
+
     reports = list(entry.options.get(CONF_REPORTS, []))
     if reports:
         annotated_reports = _annotate_history_visibility(reports)
