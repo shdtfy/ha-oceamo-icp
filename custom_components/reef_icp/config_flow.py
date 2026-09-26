@@ -310,6 +310,8 @@ _REPORT_TYPE_LABELS = {
     "pro": "ICP-OES Pro",
     "ultimate_ms": "Ultimate-MS",
     "triton_legacy_icp": "Legacy ICP-OES",
+    "icp_water_analysis": "ICP Water Analysis",
+    "icp_water_analysis_plus": "ICP Water Analysis Plus",
 }
 
 
