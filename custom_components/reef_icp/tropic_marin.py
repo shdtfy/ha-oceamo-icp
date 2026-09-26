@@ -592,6 +592,22 @@ def _parse_row_tail(
             result.update({"recommendation": "", "product": "", "rel": ""})
             return result
 
+        # Some Tropic Marin PDF rows split a chemical formula into several text
+        # fragments. The Plus report's osmosis total-phosphate row is one known
+        # example (the PO4 formula can remain in front of the two table values).
+        # For osmosis rows the measured value and target are the final two
+        # columns, so recover that pair from the end without guessing from any
+        # earlier numbers that may belong to the chemical formula.
+        match = re.search(
+            rf"(?P<value>{_VALUE})\s+(?P<target>{_TARGET})\s*$",
+            tail,
+            re.IGNORECASE,
+        )
+        if match:
+            result = {key: (value or "") for key, value in match.groupdict().items()}
+            result.update({"recommendation": "", "product": "", "rel": ""})
+            return result
+
     if expect_rel35:
         pattern = re.compile(
             rf"^(?P<value>{_VALUE})\s+"
@@ -694,9 +710,15 @@ def _measurement_from_line(
         if status["severity"] == "unknown" and not recommendation.strip():
             status = _status_from_target(state, parsed_target)
 
+        display_name = (
+            f"{spec['name']} (Osmose)"
+            if category == "osmosis"
+            else str(spec["name"])
+        )
+
         measurement: dict[str, Any] = {
             "key": spec["key"],
-            "name": spec["name"],
+            "name": display_name,
             "source_name": source_name,
             "source_symbol": spec.get("symbol"),
             "category": category,
